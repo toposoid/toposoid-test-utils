@@ -20,14 +20,15 @@ package com.ideal.linked.toposoid.test.utils
 import com.ideal.linked.common.DeploymentConverter.conf
 import com.ideal.linked.toposoid.common.{ToposoidUtils, TransversalState}
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.RegistContentResult
-import com.ideal.linked.toposoid.knowledgebase.regist.model.{Knowledge, KnowledgeForImage}
+import com.ideal.linked.toposoid.knowledgebase.regist.model.{Knowledge, KnowledgeForImage, KnowledgeForTable}
 import com.ideal.linked.toposoid.protocol.model.base.AnalyzedSentenceObjects
 import com.ideal.linked.toposoid.protocol.model.neo4j.Neo4jRecords
 import com.ideal.linked.toposoid.protocol.model.parser.{InputSentenceForParser, KnowledgeForParser, KnowledgeSentenceSetForParser}
-import com.ideal.linked.toposoid.sentence.transformer.neo4j.{AnalyzedPropositionPair, AnalyzedPropositionSet, Neo4JUtilsImpl, Sentence2Neo4jTransformer}
+import com.ideal.linked.toposoid.sentence.transformer.neo4j.{AnalyzedPropositionPair, AnalyzedPropositionSet, Neo4JUtils, Neo4JUtilsImpl, Sentence2Neo4jTransformer}
 import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
 import play.api.libs.json.Json
 import io.jvm.uuid.UUID
+
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
@@ -66,7 +67,7 @@ object TestUtils extends App {
       claimLogicRelation = knowledgeSentenceSetForParser.claimLogicRelation)
   }
 
-  private def registKnowledgeImages(knowledgeForParsers: List[KnowledgeForParser], transversalState: TransversalState): List[KnowledgeForParser] = Try {
+  private def registKnowledgeImagesAndTables(knowledgeForParsers: List[KnowledgeForParser], transversalState: TransversalState): List[KnowledgeForParser] = Try {
 
     knowledgeForParsers.foldLeft(List.empty[KnowledgeForParser]) {
       (acc, x) => {
@@ -81,9 +82,25 @@ object TestUtils extends App {
           if (registContentResult.statusInfo.status.equals("ERROR")) throw new Exception(registContentResult.statusInfo.message)
           registContentResult.knowledgeForImage
         })
+        val knowledgeForTable: List[KnowledgeForTable] = x.knowledge.knowledgeForTables.map(y => {
+          y
+          //TODO implementation
+          /*
+          val imageFeatureId = UUID.random.toString
+          val json: String = Json.toJson(KnowledgeForTable(imageFeatureId, y.tableReference)).toString()
+          val knowledgeForTableJson: String = ToposoidUtils.callComponent(json,
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_HOST"),
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_PORT"),
+            "registTable", transversalState)
+          val registContentResult: RegistContentResult = Json.parse(knowledgeForTableJson).as[RegistContentResult]
+          if (registContentResult.statusInfo.status.equals("ERROR")) throw new Exception(registContentResult.statusInfo.message)
+          registContentResult.knowledgeForTable
+           */
+        })
         val knowledge = Knowledge(sentence = x.knowledge.sentence,
           lang = x.knowledge.lang, extentInfoJson = x.knowledge.extentInfoJson,
-          isNegativeSentence = x.knowledge.isNegativeSentence, knowledgeForImages)
+          isNegativeSentence = x.knowledge.isNegativeSentence, knowledgeForImages,
+          x.knowledge.knowledgeForTables /*TODO implementation for knowledgeForTables*/, x.knowledge.knowledgeForDocument, x.knowledge.documentPageReference)
         acc :+ KnowledgeForParser(x.propositionId, x.sentenceId, knowledge)
       }
     }
@@ -92,16 +109,16 @@ object TestUtils extends App {
     case Failure(e) => throw e
   }
 
-  def registerData(knowledgeSentenceSetForParser: KnowledgeSentenceSetForParser, transversalState: TransversalState, addVectorFlag: Boolean = true): Unit = {
+  def registerData(knowledgeSentenceSetForParser: KnowledgeSentenceSetForParser, transversalState: TransversalState, addVectorFlag: Boolean = true, neo4JUtilsObject:Neo4JUtils = null): Unit = {
 
     val knowledgeSentenceSetForParserWithImage = KnowledgeSentenceSetForParser(
-      registKnowledgeImages(knowledgeSentenceSetForParser.premiseList, transversalState),
+      registKnowledgeImagesAndTables(knowledgeSentenceSetForParser.premiseList, transversalState),
       knowledgeSentenceSetForParser.premiseLogicRelation,
-      registKnowledgeImages(knowledgeSentenceSetForParser.claimList, transversalState),
+      registKnowledgeImagesAndTables(knowledgeSentenceSetForParser.claimList, transversalState),
       knowledgeSentenceSetForParser.claimLogicRelation)
 
     val analyzedPropositionSet = getAnalyzedPropositionSet(knowledgeSentenceSetForParserWithImage, transversalState)
-    Sentence2Neo4jTransformer.createGraph(analyzedPropositionSet, transversalState)
+    Sentence2Neo4jTransformer.createGraph(analyzedPropositionSet, transversalState, neo4JUtilsObject = neo4JUtilsObject)
     if (addVectorFlag) FeatureVectorizer.createVector(knowledgeSentenceSetForParserWithImage, transversalState)
   }
 

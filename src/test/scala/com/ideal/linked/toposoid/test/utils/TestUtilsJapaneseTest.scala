@@ -22,7 +22,7 @@ import com.ideal.linked.toposoid.common.{FeatureType, IMAGE, SENTENCE, ToposoidU
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.{FeatureVectorIdentifier, FeatureVectorSearchResult, SingleFeatureVectorForSearch}
 import com.ideal.linked.toposoid.knowledgebase.image.model.SingleImage
 import com.ideal.linked.toposoid.knowledgebase.nlp.model.FeatureVector
-import com.ideal.linked.toposoid.knowledgebase.regist.model.{ImageReference, Knowledge, KnowledgeForImage, KnowledgeSentenceSet, PropositionRelation, Reference}
+import com.ideal.linked.toposoid.knowledgebase.regist.model.{DocumentPageReference, ImageReference, Knowledge, KnowledgeForDocument, KnowledgeForImage, KnowledgeForTable, KnowledgeSentenceSet, PropositionRelation, Reference}
 import com.ideal.linked.toposoid.protocol.model.neo4j.Neo4jRecords
 import com.ideal.linked.toposoid.protocol.model.parser.{KnowledgeForParser, KnowledgeSentenceSetForParser}
 import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
@@ -53,7 +53,11 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
       val imageFeatureId = UUID.random.toString
       KnowledgeForImage(imageFeatureId, y.imageReference)
     })
-    Knowledge(knowledge.sentence, knowledge.lang, knowledge.extentInfoJson, knowledge.isNegativeSentence, knowledgeForImages)
+    val knowledgeForTables: List[KnowledgeForTable] = knowledge.knowledgeForTables.map(y => {
+      val tableFeatureId = UUID.random.toString
+      KnowledgeForTable(tableFeatureId, y.tableReference)
+    })
+    Knowledge(knowledge.sentence, knowledge.lang, knowledge.extentInfoJson, knowledge.isNegativeSentence, knowledgeForImages, knowledgeForTables, knowledge.knowledgeForDocument, documentPageReference = knowledge.documentPageReference)
   }
 
   def assignId(knowledgeSentenceSet: KnowledgeSentenceSet): (KnowledgeSentenceSetForParser, String) = {
@@ -93,7 +97,9 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
     val knowledgeForImages3 = KnowledgeForImage(id = "", imageReference = imageReference3)
     val knowledge3 = Knowledge(sentence = "猫が２匹います。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
 
-    val knowledge4 = Knowledge(sentence = "これはテストの主張1です。", lang = "ja_JP", extentInfoJson = "{}")
+    val knowledgeForDocument = KnowledgeForDocument(id = UUID.random.toString, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "テストタイトル")
+
+    val knowledge4 = Knowledge(sentence = "これはテストの主張1です。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForDocument=knowledgeForDocument)
     val knowledge5 = Knowledge(sentence = "これはテストの主張2です。", lang = "ja_JP", extentInfoJson = "{}")
     val reference6 = Reference(url = "", surface = "犬が", surfaceIndex = 0, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/train2017/000000428746.jpg", metaInformations = List.empty[String])
     val imageReference6 = ImageReference(reference = reference6, x = 435, y = 227, width = 91, height = 69)
@@ -118,6 +124,8 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
     val result3: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/train2017/000000428746.jpg'})-[:ImageEdge]->(t:ClaimNode{surface:'犬が'}) RETURN s, t", transversalState)
     assert(result3.records.size == 1)
     val urlDog = result3.records.head.head.value.featureNode.get.url
+    val result4: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'テストタイトル'}) RETURN x", transversalState)
+    assert(result4.records.size == 1)
 
     for (knowledge <- knowledgeSentenceSet.premiseList ::: knowledgeSentenceSet.claimList) {
       val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.sentence, "ja_JP", "{}"), transversalState)
@@ -140,6 +148,18 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
         assert(result.ids.size > 0 && result.similarities.head > 0.999)
         result.ids.map(x => deleteFeatureVector(x, IMAGE))
       })
+
+      /*TODO implementation for knowledgeForTables*/
+
+      if(!knowledge.knowledgeForDocument.id.equals("")){
+        val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.knowledgeForDocument.titleOfTopPage, "ja_JP", "{}"), transversalState)
+        val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+        val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+        val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+        assert(result.ids.size > 0 && result.similarities.head > 0.999)
+        result.ids.map(x => deleteFeatureVector(x, SENTENCE))
+      }
+
     }
 
   }

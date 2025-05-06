@@ -53,7 +53,11 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
       val imageFeatureId = UUID.random.toString
       KnowledgeForImage(imageFeatureId, y.imageReference)
     })
-    Knowledge(knowledge.sentence, knowledge.lang, knowledge.extentInfoJson, knowledge.isNegativeSentence, knowledgeForImages)
+    val knowledgeForTables: List[KnowledgeForTable] = knowledge.knowledgeForTables.map(y => {
+      val tableFeatureId = UUID.random.toString
+      KnowledgeForTable(tableFeatureId, y.tableReference)
+    })
+    Knowledge(knowledge.sentence, knowledge.lang, knowledge.extentInfoJson, knowledge.isNegativeSentence, knowledgeForImages, knowledgeForTables, knowledge.knowledgeForDocument, documentPageReference = knowledge.documentPageReference)
   }
 
   def assignId(knowledgeSentenceSet: KnowledgeSentenceSet): (KnowledgeSentenceSetForParser, String) = {
@@ -94,7 +98,9 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val knowledgeForImages3 = KnowledgeForImage(id = "", imageReference = imageReference3)
     val knowledge3 = Knowledge(sentence = "There are two cats.", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
 
-    val knowledge4 = Knowledge(sentence = "This is claim-1.", lang = "en_US", extentInfoJson = "{}")
+    val knowledgeForDocument = KnowledgeForDocument(id = UUID.random.toString, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
+
+    val knowledge4 = Knowledge(sentence = "This is claim-1.", lang = "en_US", extentInfoJson = "{}", knowledgeForDocument=knowledgeForDocument)
     val knowledge5 = Knowledge(sentence = "This is claim-2.", lang = "en_US", extentInfoJson = "{}")
     val reference6 = Reference(url = "", surface = "dog", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/train2017/000000428746.jpg", metaInformations = List.empty[String])
     val imageReference6 = ImageReference(reference = reference6, x = 435, y = 227, width = 91, height = 69)
@@ -119,6 +125,8 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val query3 = "MATCH x=(:PremiseNode{surface:'premise-1'})-[:LocalEdge]-(:PremiseNode)-[:LocalEdge{logicType:'IMP'}]-(:ClaimNode)-[:LocalEdge]-(:ClaimNode{surface:'claim-1'}) return x"
     val queryResult3: Neo4jRecords = TestUtils.executeQueryAndReturn(query3, transversalState)
     assert(queryResult3.records.size == 1)
+    val result4: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'TestTitle'}) RETURN x", transversalState)
+    assert(result4.records.size == 1)
 
 
     val queryResult4: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/val2017/000000039769.jpg'})-[:ImageEdge]->(t:PremiseNode{surface:'cats'}) RETURN s, t", transversalState)
@@ -150,6 +158,17 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
         assert(result.ids.size > 0 && result.similarities.head > 0.999)
         result.ids.map(x => deleteFeatureVector(x, IMAGE))
       })
+
+      /*TODO implementation for knowledgeForTables*/
+      if (!knowledge.knowledgeForDocument.id.equals("")) {
+        val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.knowledgeForDocument.titleOfTopPage, "en_US", "{}"), transversalState)
+        val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+        val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+        val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+        assert(result.ids.size > 0 && result.similarities.head > 0.999)
+        result.ids.map(x => deleteFeatureVector(x, SENTENCE))
+      }
+
 
     }
 
