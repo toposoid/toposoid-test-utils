@@ -200,3 +200,37 @@ services:
     ports:
       - 9005:9005
 
+  data-accessor-non-sentence-weaviate-web:
+    image: toposoid/data-accessor-weaviate-web:0.6-SNAPSHOT
+    environment:
+      - TOPOSOID_WEAVIATE_HOST=non-sentence-weaviate
+      - TOPOSOID_WEAVIATE_PORT=8082
+      - TOPOSOID_WEAVIATE_SIMILARITY_THRESHOLD=0.85
+      - TOPOSOID_DATA_ACCESSOR_PORT=9011
+    ports:
+      - 9022:9011
+    depends_on:
+      - non-sentence-weaviate
+
+  non-sentence-weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.26.3
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8082'
+      - --scheme
+      - http
+    ports:
+      - 8082:8082
+    #volumes:
+    #  - /var/weaviate:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'text2vec-huggingface'
+      HUGGINGFACE_APIKEY: ''
+      ENABLE_MODULES: 'text2vec-cohere,text2vec-huggingface,text2vec-palm,text2vec-openai,generative-openai,generative-cohere,generative-palm,ref2vec-centroid,reranker-cohere,qna-openai'
+      CLUSTER_HOSTNAME: 'node1'
