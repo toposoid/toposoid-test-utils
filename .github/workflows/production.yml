@@ -40,6 +40,9 @@ jobs:
           docker compose -f docker-compose-workflow.yml up -d data-accessor-sentence-weaviate-web
           docker compose -f docker-compose-workflow.yml up -d image-weaviate
           docker compose -f docker-compose-workflow.yml up -d data-accessor-image-weaviate-web
+          docker compose -f docker-compose-workflow.yml up -d image-weaviate
+          docker compose -f docker-compose-workflow.yml up -d non-sentence-weaviate
+          docker compose -f docker-compose-workflow.yml up -d data-accessor-non-sentence-weaviate-web          
           docker compose -f docker-compose-workflow.yml up -d toposoid-contents-admin-web
           docker compose -f docker-compose-workflow.yml up -d toposoid-common-image-recognition-web          
           docker compose -f docker-compose-workflow.yml up -d toposoid-common-nlp-japanese-web
