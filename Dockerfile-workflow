@@ -1,0 +1,14 @@
+FROM toposoid/toposoid-scala-lib:0.6-SNAPSHOT
+
+WORKDIR /app
+ARG TARGET_BRANCH
+ENV DEPLOYMENT=local
+ENV _JAVA_OPTIONS="-Xms512m -Xmx4g"
+
+RUN apt-get update \
+&& apt-get -y install git \
+&& git clone https://github.com/toposoid/toposoid-test-utils.git \
+&& cd toposoid-test-utils \
+&& git pull \
+&& git fetch origin ${TARGET_BRANCH} \
+&& git checkout ${TARGET_BRANCH}
