@@ -73,7 +73,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
   }
 
   "The data " should "be properly registered in GraphDB and VectorDB." in {
-
+    val documentId = UUID.random.toString
     val knowledge1 = Knowledge(sentence = "This is premise-1.", lang = "en_US", extentInfoJson = "{}")
     val knowledge2 = Knowledge(sentence = "This is premise-2.", lang = "en_US", extentInfoJson = "{}")
     val reference3 = Reference(url = "", surface = "cats", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/val2017/000000039769.jpg", metaInformations = List.empty[String])
@@ -81,7 +81,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val knowledgeForImages3 = KnowledgeForImage(id = "", imageReference = imageReference3)
     val knowledge3 = Knowledge(sentence = "There are two cats.", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
 
-    val knowledgeForDocument = KnowledgeForDocument(id = UUID.random.toString, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
+    val knowledgeForDocument = KnowledgeForDocument(id = documentId, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
 
     val knowledge4 = Knowledge(sentence = "This is claim-1.", lang = "en_US", extentInfoJson = "{}", knowledgeForDocument=knowledgeForDocument)
     val knowledge5 = Knowledge(sentence = "This is claim-2.", lang = "en_US", extentInfoJson = "{}")
@@ -126,7 +126,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
       val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
       val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
       assert(result.ids.size > 0)
-      result.ids.map(x => deleteFeatureVector(x, SENTENCE))
+      //result.ids.map(x => deleteFeatureVector(x, SENTENCE))
 
       knowledge.knowledgeForImages.foreach(x => {
         val url: String = x.imageReference.reference.surface match {
@@ -139,7 +139,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
         assert(result.ids.size > 0 && result.similarities.head > 0.999)
-        result.ids.map(x => deleteFeatureVector(x, IMAGE))
+        //result.ids.map(x => deleteFeatureVector(x, IMAGE))
       })
 
       /*TODO implementation for knowledgeForTables*/
@@ -149,11 +149,35 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
         assert(result.ids.size > 0 && result.similarities.head > 0.999)
-        result.ids.map(x => deleteFeatureVector(x, NON_SENTENCE))
+        //result.ids.map(x => deleteFeatureVector(x, NON_SENTENCE))
       }
 
 
     }
+    TestUtils.deleteData(knowledgeSentenceSetForParser, transversalState)
+
+    neo4JUtils.executeQuery("MATCH (n) RETURN n", transversalState)
+    val check1: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
+    assert(check1.records.size == 0)
+
+    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val jsonSV: String = Json.toJson(featureVectorIdentifierSV).toString()
+    val featureVectorSearchResultJsonSV: String = ToposoidUtils.callComponent(jsonSV, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val checkSV = Json.parse(featureVectorSearchResultJsonSV).as[FeatureVectorSearchResult]
+    assert(checkSV.ids.size == 0)
+
+    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val jsonIMGV: String = Json.toJson(featureVectorIdentifierIMGV).toString()
+    val featureVectorSearchResultJsonIMGV: String = ToposoidUtils.callComponent(jsonIMGV, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val checkIMGV = Json.parse(featureVectorSearchResultJsonIMGV).as[FeatureVectorSearchResult]
+    assert(checkIMGV.ids.size == 0)
+
+    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "ja_JP", DOCUMENT.index, TITLE_OF_TOP_PAGE.index)
+    val jsonNSV: String = Json.toJson(featureVectorIdentifierNSV).toString()
+    val featureVectorSearchResultJsonNSV: String = ToposoidUtils.callComponent(jsonNSV, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val resultNSV = Json.parse(featureVectorSearchResultJsonNSV).as[FeatureVectorSearchResult]
+    assert(resultNSV.ids.size == 0)
+
 
   }
 
