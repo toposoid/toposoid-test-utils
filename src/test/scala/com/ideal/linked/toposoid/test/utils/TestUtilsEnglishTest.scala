@@ -18,6 +18,7 @@
 package com.ideal.linked.toposoid.test.utils
 
 import com.ideal.linked.common.DeploymentConverter.conf
+import com.ideal.linked.toposoid.common.ToposoidUtils.assignId
 import com.ideal.linked.toposoid.common._
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.{FeatureVectorIdentifier, FeatureVectorSearchResult, SingleFeatureVectorForSearch}
 import com.ideal.linked.toposoid.knowledgebase.image.model.SingleImage
@@ -33,44 +34,26 @@ import play.api.libs.json.Json
 
 class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAndAfterAll {
   val transversalState: TransversalState = TransversalState(userId = "test-user", username = "guest", roleId = 0, csrfToken = "")
+  val neo4JUtils = new Neo4JUtilsImpl()
+
+  def deleteNeo4JAllData(transversalState: TransversalState): Unit = {
+    val query = "MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r"
+    neo4JUtils.executeQuery(query, transversalState)
+  }
+
   before {
     ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
     ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
-    TestUtils.deleteNeo4JAllData(transversalState)
+    deleteNeo4JAllData(transversalState)
     Thread.sleep(1000)
   }
 
   override def beforeAll(): Unit = {
-    TestUtils.deleteNeo4JAllData(transversalState)
+    deleteNeo4JAllData(transversalState)
   }
 
   override def afterAll(): Unit = {
-    TestUtils.deleteNeo4JAllData(transversalState)
-  }
-
-  private def convertKnowledge(knowledge: Knowledge): Knowledge = {
-    val knowledgeForImages: List[KnowledgeForImage] = knowledge.knowledgeForImages.map(y => {
-      val imageFeatureId = UUID.random.toString
-      KnowledgeForImage(imageFeatureId, y.imageReference)
-    })
-    val knowledgeForTables: List[KnowledgeForTable] = knowledge.knowledgeForTables.map(y => {
-      val tableFeatureId = UUID.random.toString
-      KnowledgeForTable(tableFeatureId, y.tableReference)
-    })
-    Knowledge(knowledge.sentence, knowledge.lang, knowledge.extentInfoJson, knowledge.isNegativeSentence, knowledgeForImages, knowledgeForTables, knowledge.knowledgeForDocument, documentPageReference = knowledge.documentPageReference)
-  }
-
-  def assignId(knowledgeSentenceSet: KnowledgeSentenceSet): (KnowledgeSentenceSetForParser, String) = {
-    val propositionId = UUID.random.toString
-    val knowledgeForParserPremise: List[KnowledgeForParser] = knowledgeSentenceSet.premiseList.map(x => KnowledgeForParser(propositionId, UUID.random.toString, convertKnowledge(x)))
-    val knowledgeForParserClaim: List[KnowledgeForParser] = knowledgeSentenceSet.claimList.map(x => KnowledgeForParser(propositionId, UUID.random.toString, convertKnowledge(x)))
-
-    (KnowledgeSentenceSetForParser(
-      premiseList = knowledgeForParserPremise,
-      premiseLogicRelation = knowledgeSentenceSet.premiseLogicRelation,
-      claimList = knowledgeForParserClaim,
-      claimLogicRelation = knowledgeSentenceSet.claimLogicRelation
-    ), propositionId)
+    deleteNeo4JAllData(transversalState)
   }
 
   private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
@@ -117,23 +100,23 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     TestUtils.registerData(knowledgeSentenceSetForParser, transversalState)
 
     val query = "MATCH x=(:ClaimNode{surface:'claim-1'})-[:LocalEdge]-(:ClaimNode)-[:LocalEdge{logicType:'OR'}]-(:ClaimNode)-[:LocalEdge]-(:ClaimNode{surface:'claim-2'}) return x"
-    val queryResult: Neo4jRecords = TestUtils.executeQueryAndReturn(query, transversalState)
+    val queryResult: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
     assert(queryResult.records.size == 1)
     val query2 = "MATCH x=(:PremiseNode{surface:'premise-1'})-[:LocalEdge]-(:PremiseNode)-[:LocalEdge{logicType:'AND'}]-(:PremiseNode)-[:LocalEdge]-(:PremiseNode{surface:'premise-2'}) return x"
-    val queryResult2: Neo4jRecords = TestUtils.executeQueryAndReturn(query2, transversalState)
+    val queryResult2: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query2, transversalState)
     assert(queryResult2.records.size == 1)
     val query3 = "MATCH x=(:PremiseNode{surface:'premise-1'})-[:LocalEdge]-(:PremiseNode)-[:LocalEdge{logicType:'IMP'}]-(:ClaimNode)-[:LocalEdge]-(:ClaimNode{surface:'claim-1'}) return x"
-    val queryResult3: Neo4jRecords = TestUtils.executeQueryAndReturn(query3, transversalState)
+    val queryResult3: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query3, transversalState)
     assert(queryResult3.records.size == 1)
-    val result4: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'TestTitle'}) RETURN x", transversalState)
+    val result4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'TestTitle'}) RETURN x", transversalState)
     assert(result4.records.size == 1)
 
 
-    val queryResult4: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/val2017/000000039769.jpg'})-[:ImageEdge]->(t:PremiseNode{surface:'cats'}) RETURN s, t", transversalState)
+    val queryResult4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/val2017/000000039769.jpg'})-[:ImageEdge]->(t:PremiseNode{surface:'cats'}) RETURN s, t", transversalState)
     assert(queryResult4.records.size == 1)
 
     val urlCat = queryResult4.records.head.head.value.featureNode.get.url
-    val queryResult5: Neo4jRecords = TestUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/train2017/000000428746.jpg'})-[:ImageEdge]->(t:ClaimNode{surface:'dog'}) RETURN s, t", transversalState)
+    val queryResult5: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/train2017/000000428746.jpg'})-[:ImageEdge]->(t:ClaimNode{surface:'dog'}) RETURN s, t", transversalState)
     assert(queryResult5.records.size == 1)
     val urlDog = queryResult5.records.head.head.value.featureNode.get.url
 
@@ -166,7 +149,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
         assert(result.ids.size > 0 && result.similarities.head > 0.999)
-        result.ids.map(x => deleteFeatureVector(x, SENTENCE))
+        result.ids.map(x => deleteFeatureVector(x, NON_SENTENCE))
       }
 
 

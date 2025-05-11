@@ -18,22 +18,19 @@
 package com.ideal.linked.toposoid.test.utils
 
 import com.ideal.linked.common.DeploymentConverter.conf
-import com.ideal.linked.toposoid.common.{ToposoidUtils, TransversalState}
+import com.ideal.linked.toposoid.common.{Neo4JUtils, Neo4JUtilsImpl, ToposoidUtils, TransversalState}
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.RegistContentResult
 import com.ideal.linked.toposoid.knowledgebase.regist.model.{Knowledge, KnowledgeForImage, KnowledgeForTable}
 import com.ideal.linked.toposoid.protocol.model.base.AnalyzedSentenceObjects
-import com.ideal.linked.toposoid.protocol.model.neo4j.Neo4jRecords
 import com.ideal.linked.toposoid.protocol.model.parser.{InputSentenceForParser, KnowledgeForParser, KnowledgeSentenceSetForParser}
-import com.ideal.linked.toposoid.sentence.transformer.neo4j.{AnalyzedPropositionPair, AnalyzedPropositionSet, Neo4JUtils, Neo4JUtilsImpl, Sentence2Neo4jTransformer}
+import com.ideal.linked.toposoid.sentence.transformer.neo4j.{AnalyzedPropositionPair, AnalyzedPropositionSet, Sentence2Neo4jTransformer}
 import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
 import play.api.libs.json.Json
-import io.jvm.uuid.UUID
 
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 
-object TestUtils extends App {
-
+object TestUtils {
 
   private def parse(knowledgeForParser: KnowledgeForParser, transversalState: TransversalState): AnalyzedPropositionPair = {
 
@@ -72,8 +69,8 @@ object TestUtils extends App {
     knowledgeForParsers.foldLeft(List.empty[KnowledgeForParser]) {
       (acc, x) => {
         val knowledgeForImages: List[KnowledgeForImage] = x.knowledge.knowledgeForImages.map(y => {
-          val imageFeatureId = UUID.random.toString
-          val json: String = Json.toJson(KnowledgeForImage(imageFeatureId, y.imageReference)).toString()
+          //val imageFeatureId = UUID.random.toString
+          val json: String = Json.toJson(KnowledgeForImage(y.id, y.imageReference)).toString()
           val knowledgeForImageJson: String = ToposoidUtils.callComponent(json,
             conf.getString("TOPOSOID_CONTENTS_ADMIN_HOST"),
             conf.getString("TOPOSOID_CONTENTS_ADMIN_PORT"),
@@ -122,48 +119,21 @@ object TestUtils extends App {
     if (addVectorFlag) FeatureVectorizer.createVector(knowledgeSentenceSetForParserWithImage, transversalState)
   }
 
-  def executeQueryAndReturn(query: String, transversalState: TransversalState): Neo4jRecords = {
-    val convertQuery = ToposoidUtils.encodeJsonInJson(query)
-    val hoge = ToposoidUtils.decodeJsonInJson(convertQuery)
-    val json = s"""{ "query":"$convertQuery", "target": "" }"""
-    val jsonResult = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_GRAPHDB_WEB_HOST"), conf.getString("TOPOSOID_GRAPHDB_WEB_PORT"), "getQueryFormattedResult", transversalState)
-    Json.parse(jsonResult).as[Neo4jRecords]
+
+  def deleteData(knowledgeSentenceSetForParser: KnowledgeSentenceSetForParser, transversalState: TransversalState) = {
+
+    (knowledgeSentenceSetForParser.premiseList ::: knowledgeSentenceSetForParser.claimList).foreach(knowledgeForParser => {
+      //TODO:documentIdを持っているノードも削除
+      //Delete relationships
+      val query = s"MATCH (n)-[r]-() WHERE n.propositionId = '${knowledgeForParser.propositionId}' DELETE n,r"
+      val neo4JUtils = new Neo4JUtilsImpl()
+      neo4JUtils.executeQuery(query, transversalState)
+      //Delete orphan nodes
+      val query2 = s"MATCH (n) WHERE n.propositionId = '${knowledgeForParser.propositionId}' DELETE n"
+      neo4JUtils.executeQuery(query2, transversalState)
+      val query3 = s"MATCH (n) WHERE n.documentId = '${knowledgeForParser.knowledge.knowledgeForDocument.id}' DELETE n"
+      neo4JUtils.executeQuery(query3, transversalState)
+      FeatureVectorizer.removeVector(knowledgeForParser, transversalState)
+    })
   }
-
-  def deleteNeo4JAllData(transversalState: TransversalState): Unit = {
-    val query = "MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r"
-    val neo4JUtils = new Neo4JUtilsImpl()
-    neo4JUtils.executeQuery(query, transversalState)
-  }
-
-
-  /*
-  private def deleteObject(knowledgeForParser: KnowledgeForParser, transversalState: TransversalState) = {
-    //TODO:documentIdを持っているノードも削除
-    //Delete relationships
-    val query = s"MATCH (n)-[r]-() WHERE n.propositionId = '${knowledgeForParser.propositionId}' DELETE n,r"
-    val neo4JUtils = new Neo4JUtilsImpl()
-    neo4JUtils.executeQuery(query, transversalState)
-    //Delete orphan nodes
-    val query2 = s"MATCH (n) WHERE n.propositionId = '${knowledgeForParser.propositionId}' DELETE n"
-    neo4JUtils.executeQuery(query2, transversalState)
-    val query3 = s"MATCH (n) WHERE n.documentId = '${knowledgeForParser.knowledge.knowledgeForDocument.id}' DELETE n"
-    neo4JUtils.executeQuery(query3, transversalState)
-    FeatureVectorizer.removeVector(knowledgeForParser, transversalState)
-  }
-
-  def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType, transversalState: TransversalState): Unit = {
-    val json: String = Json.toJson(featureVectorIdentifier).toString()
-    if (featureType.equals(SENTENCE)) {
-      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    } else if (featureType.equals(IMAGE)) {
-      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    } else if (featureType.equals(NON_SENTENCE)){
-      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    }
-  }
-  */
-
-
-
 }
