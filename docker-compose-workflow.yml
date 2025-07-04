@@ -193,11 +193,14 @@ services:
       ENABLE_MODULES: 'text2vec-cohere,text2vec-huggingface,text2vec-palm,text2vec-openai,generative-openai,generative-cohere,generative-palm,ref2vec-centroid,reranker-cohere,qna-openai'
       CLUSTER_HOSTNAME: 'node1'
 
-  scala-data-accessor-neo4j-web:
-    image: toposoid/scala-data-accessor-neo4j-web:0.6-SNAPSHOT-lowspec
+  data-accessor-neo4j-web:
+    image: toposoid/data-accessor-neo4j-web:0.6-SNAPSHOT
     environment:
       - PRIVATE_IP_ADDRESS=scala-data-accessor-neo4j-web
       - TOPOSOID_GRAPHDB_HOST=neo4j
+      - TOPOSOID_JVM_XMS=512m
+      - TOPOSOID_JVM_XMX=1g
+      - TOPOSOID_JVM_XSS=512k
       - PLAY_HTTP_PORT=9005
     ports:
       - 9005:9005
