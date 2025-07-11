@@ -133,7 +133,7 @@ object TestUtils {
       neo4JUtils.executeQuery(query2, transversalState)
       val query3 = s"MATCH (n) WHERE n.documentId = '${knowledgeForParser.knowledge.knowledgeForDocument.id}' DELETE n"
       neo4JUtils.executeQuery(query3, transversalState)
-      FeatureVectorizer.removeVector(knowledgeForParser, transversalState)
+      FeatureVectorizer.removeVectorByPropositionId(knowledgeForParser, transversalState)
     })
   }
 }
