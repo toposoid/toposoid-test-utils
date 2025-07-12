@@ -15,6 +15,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "com.ideal.linked" %% "toposoid-sentence-transformer-neo4j" % "0.6-SNAPSHOT",
     libraryDependencies += "com.ideal.linked" %% "toposoid-feature-vectorizer" % "0.6-SNAPSHOT",
     libraryDependencies += "io.jvm.uuid" %% "scala-uuid" % "0.3.1",
+      libraryDependencies += "com.softwaremill.sttp.client4" %% "core" % "4.0.9",
     libraryDependencies += scalaTest % Test
   )
   .enablePlugins(AutomateHeaderPlugin)
