@@ -10,7 +10,7 @@ env:
   PJ_ACTOR: toposoid
   PJ_REPO: toposoid-test-utils
   PJ_BRANCH: feature
-  PJ_VERSION: 0.6-SNAPSHOT
+  PJ_VERSION: 0.6
 jobs:
   unit-test_toposoid-test-utils:
     runs-on: self-hosted
