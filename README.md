@@ -1,8 +1,8 @@
 # toposoid-test-utils
 This is a common library used by Linked Ideal LLC. in Scala projects.
-The main implementation of this project is the neo4j driver Wrapper.
+The main implementation of this project is Registering and deleting test data.
 
-[![Unit Test Action](https://github.com/toposoid/scala-data-accessor-neo4j/actions/workflows/action.yml/badge.svg?branch=main)](https://github.com/toposoid/scala-data-accessor-neo4j/actions/workflows/action.yml)
+[![Test And Build](https://github.com/toposoid/toposoid-test-utils/actions/workflows/action.yml/badge.svg)](https://github.com/toposoid/toposoid-test-utils/actions/workflows/action.yml)
 
 ## Requirements
 Scala version 2.13.x,   
