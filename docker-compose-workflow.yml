@@ -32,7 +32,7 @@ services:
     ports:
       - 9001:9001
   toposoid-common-nlp-japanese-web:
-    image: toposoid/toposoid-common-nlp-japanese-web:0.6-lowspec-lowspec
+    image: toposoid/toposoid-common-nlp-japanese-web:0.6-lowspec
     #image: toposoid/toposoid-common-nlp-japanese-web:0.6
     environment:
       - PRIVATE_IP_ADDRESS=toposoid-common-nlp-japanese-web
@@ -48,7 +48,7 @@ services:
     ports:
       - 9006:9006
   toposoid-sentence-parser-english-web:
-    image: toposoid/toposoid-sentence-parser-english-web:0.6-lowspec-lowspec
+    image: toposoid/toposoid-sentence-parser-english-web:0.6-lowspec
     #image: toposoid/toposoid-sentence-parser-english-web:0.6
     environment:
       - PRIVATE_IP_ADDRESS=toposoid-sentence-parser-english-web
@@ -59,7 +59,7 @@ services:
     ports:
       - 9007:9007
   toposoid-common-nlp-english-web:
-    image: toposoid/toposoid-common-nlp-english-web:0.6-lowspec-lowspec
+    image: toposoid/toposoid-common-nlp-english-web:0.6-lowspec
     #image: toposoid/toposoid-common-nlp-english-web:0.6
     environment:
       - PRIVATE_IP_ADDRESS=toposoid-common-nlp-english-web
@@ -115,7 +115,7 @@ services:
       - 9012:9012
 
   toposoid-common-image-recognition-web:
-    image: toposoid/toposoid-common-image-recognition-web:0.6-lowspec-lowspec
+    image: toposoid/toposoid-common-image-recognition-web:0.6-lowspec
     #image: toposoid/toposoid-common-image-recognition-web:0.6
     environment:
       - TOPOSOID_IMAGE_RECOGNITION_VIT_MODEL=google/vit-base-patch16-224
