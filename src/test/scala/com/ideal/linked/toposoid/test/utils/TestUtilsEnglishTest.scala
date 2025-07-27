@@ -1,0 +1,191 @@
+/*
+ * Copyright (C) 2025  Linked Ideal LLC.[https://linked-ideal.com/]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package com.ideal.linked.toposoid.test.utils
+
+import com.ideal.linked.common.DeploymentConverter.conf
+import com.ideal.linked.toposoid.common.ToposoidUtils.assignId
+import com.ideal.linked.toposoid.common._
+import com.ideal.linked.toposoid.knowledgebase.featurevector.model.{FeatureVectorIdentifier, FeatureVectorSearchResult, SingleFeatureVectorForSearch}
+import com.ideal.linked.toposoid.knowledgebase.image.model.SingleImage
+import com.ideal.linked.toposoid.knowledgebase.nlp.model.FeatureVector
+import com.ideal.linked.toposoid.knowledgebase.regist.model._
+import com.ideal.linked.toposoid.protocol.model.neo4j.Neo4jRecords
+import com.ideal.linked.toposoid.protocol.model.parser.{KnowledgeForParser, KnowledgeSentenceSetForParser}
+import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
+import io.jvm.uuid.UUID
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
+import play.api.libs.json.Json
+
+class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAndAfterAll {
+  val transversalState: TransversalState = TransversalState(userId = "test-user", username = "guest", roleId = 0, csrfToken = "")
+  val neo4JUtils = new Neo4JUtilsImpl()
+
+  def deleteNeo4JAllData(transversalState: TransversalState): Unit = {
+    val query = "MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r"
+    neo4JUtils.executeQuery(query, transversalState)
+  }
+
+  before {
+    ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
+    ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
+    deleteNeo4JAllData(transversalState)
+    Thread.sleep(1000)
+  }
+
+  override def beforeAll(): Unit = {
+    deleteNeo4JAllData(transversalState)
+  }
+
+  override def afterAll(): Unit = {
+    deleteNeo4JAllData(transversalState)
+  }
+
+  private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
+    val json: String = Json.toJson(featureVectorIdentifier).toString()
+    if (featureType.equals(SENTENCE)) {
+      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
+    } else if (featureType.equals(IMAGE)) {
+      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
+    }
+  }
+
+  private def getImageVector(url: String): FeatureVector = {
+    val singleImage = SingleImage(url)
+    val json: String = Json.toJson(singleImage).toString()
+    val featureVectorJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_HOST"), conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_PORT"), "getFeatureVector", transversalState)
+    Json.parse(featureVectorJson).as[FeatureVector]
+  }
+
+  "The data " should "be properly registered in GraphDB and VectorDB." in {
+    val documentId = UUID.random.toString
+    val knowledge1 = Knowledge(sentence = "This is premise-1.", lang = "en_US", extentInfoJson = "{}")
+    val knowledge2 = Knowledge(sentence = "This is premise-2.", lang = "en_US", extentInfoJson = "{}")
+    val reference3 = Reference(url = "", surface = "cats", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/val2017/000000039769.jpg", metaInformations = List.empty[String])
+    val imageReference3 = ImageReference(reference = reference3, x = 27, y = 41, width = 287, height = 435)
+    val knowledgeForImages3 = KnowledgeForImage(id = "", imageReference = imageReference3)
+    val knowledge3 = Knowledge(sentence = "There are two cats.", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
+
+    val knowledgeForDocument = KnowledgeForDocument(id = documentId, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
+
+    val knowledge4 = Knowledge(sentence = "This is claim-1.", lang = "en_US", extentInfoJson = "{}", knowledgeForDocument=knowledgeForDocument)
+    val knowledge5 = Knowledge(sentence = "This is claim-2.", lang = "en_US", extentInfoJson = "{}")
+    val reference6 = Reference(url = "", surface = "dog", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/train2017/000000428746.jpg", metaInformations = List.empty[String])
+    val imageReference6 = ImageReference(reference = reference6, x = 435, y = 227, width = 91, height = 69)
+    val knowledgeForImages6 = KnowledgeForImage(id = "", imageReference = imageReference6)
+    val knowledge6 = Knowledge(sentence = "There is a dog", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages6))
+
+    val knowledgeSentenceSet = KnowledgeSentenceSet(
+      premiseList = List(knowledge1, knowledge2, knowledge3),
+      premiseLogicRelation = List(PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2)),
+      claimList = List(knowledge4, knowledge5, knowledge6),
+      claimLogicRelation = List(PropositionRelation(operator = "OR", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2))
+    )
+    val (knowledgeSentenceSetForParser, propositionId) = assignId(knowledgeSentenceSet)
+    TestUtils.registerData(knowledgeSentenceSetForParser, transversalState)
+
+    val query = "MATCH x=(:ClaimNode{surface:'claim-1'})-[:LocalEdge]-(:ClaimNode)-[:LocalEdge{logicType:'OR'}]-(:ClaimNode)-[:LocalEdge]-(:ClaimNode{surface:'claim-2'}) return x"
+    val queryResult: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
+    assert(queryResult.records.size == 1)
+    val query2 = "MATCH x=(:PremiseNode{surface:'premise-1'})-[:LocalEdge]-(:PremiseNode)-[:LocalEdge{logicType:'AND'}]-(:PremiseNode)-[:LocalEdge]-(:PremiseNode{surface:'premise-2'}) return x"
+    val queryResult2: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query2, transversalState)
+    assert(queryResult2.records.size == 1)
+    val query3 = "MATCH x=(:PremiseNode{surface:'premise-1'})-[:LocalEdge]-(:PremiseNode)-[:LocalEdge{logicType:'IMP'}]-(:ClaimNode)-[:LocalEdge]-(:ClaimNode{surface:'claim-1'}) return x"
+    val queryResult3: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query3, transversalState)
+    assert(queryResult3.records.size == 1)
+    val result4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'TestTitle'}) RETURN x", transversalState)
+    assert(result4.records.size == 1)
+
+
+    val queryResult4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/val2017/000000039769.jpg'})-[:ImageEdge]->(t:PremiseNode{surface:'cats'}) RETURN s, t", transversalState)
+    assert(queryResult4.records.size == 1)
+
+    val urlCat = queryResult4.records.head.head.value.featureNode.get.url
+    val queryResult5: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/train2017/000000428746.jpg'})-[:ImageEdge]->(t:ClaimNode{surface:'dog'}) RETURN s, t", transversalState)
+    assert(queryResult5.records.size == 1)
+    val urlDog = queryResult5.records.head.head.value.featureNode.get.url
+
+    for (knowledge <- knowledgeSentenceSet.premiseList ::: knowledgeSentenceSet.claimList) {
+      val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.sentence, "en_US", "{}"), transversalState)
+      val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+      val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+      val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+      assert(result.ids.size > 0)
+      //result.ids.map(x => deleteFeatureVector(x, SENTENCE))
+
+      knowledge.knowledgeForImages.foreach(x => {
+        val url: String = x.imageReference.reference.surface match {
+          case "cats" => urlCat
+          case "dog" => urlDog
+          case _ => "BAD URL"
+        }
+        val vector = this.getImageVector(url)
+        val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+        val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+        val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+        assert(result.ids.size > 0 && result.similarities.head > 0.999)
+        //result.ids.map(x => deleteFeatureVector(x, IMAGE))
+      })
+
+      /*TODO implementation for knowledgeForTables*/
+      if (!knowledge.knowledgeForDocument.id.equals("")) {
+        val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.knowledgeForDocument.titleOfTopPage, "en_US", "{}"), transversalState)
+        val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+        val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+        val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+        assert(result.ids.size > 0 && result.similarities.head > 0.999)
+        //result.ids.map(x => deleteFeatureVector(x, NON_SENTENCE))
+      }
+
+
+    }
+    TestUtils.deleteData(knowledgeSentenceSetForParser, transversalState)
+
+    neo4JUtils.executeQuery("MATCH (n) RETURN n", transversalState)
+    val check1: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
+    assert(check1.records.size == 0)
+
+    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val jsonSV: String = Json.toJson(featureVectorIdentifierSV).toString()
+    val featureVectorSearchResultJsonSV: String = ToposoidUtils.callComponent(jsonSV, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val checkSV = Json.parse(featureVectorSearchResultJsonSV).as[FeatureVectorSearchResult]
+    assert(checkSV.ids.size == 0)
+
+    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val jsonIMGV: String = Json.toJson(featureVectorIdentifierIMGV).toString()
+    val featureVectorSearchResultJsonIMGV: String = ToposoidUtils.callComponent(jsonIMGV, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val checkIMGV = Json.parse(featureVectorSearchResultJsonIMGV).as[FeatureVectorSearchResult]
+    assert(checkIMGV.ids.size == 0)
+
+    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "ja_JP", DOCUMENT.index, TITLE_OF_TOP_PAGE.index)
+    val jsonNSV: String = Json.toJson(featureVectorIdentifierNSV).toString()
+    val featureVectorSearchResultJsonNSV: String = ToposoidUtils.callComponent(jsonNSV, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val resultNSV = Json.parse(featureVectorSearchResultJsonNSV).as[FeatureVectorSearchResult]
+    assert(resultNSV.ids.size == 0)
+
+
+  }
+
+
+}
+
+
+
+
+
+
