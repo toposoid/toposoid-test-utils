@@ -8,7 +8,7 @@ env:
   PJ_ACTOR: toposoid
   PJ_REPO: toposoid-test-utils
   PJ_BRANCH: feature
-  PJ_VERSION: 0.6
+  PJ_VERSION: 0.7-SNAPSHOT
 jobs:
   unit-test_toposoid-test-utils:
     runs-on: self-hosted
@@ -40,7 +40,7 @@ jobs:
             docker compose -f docker-compose-workflow.yml up -d non-sentence-weaviate
             docker compose -f docker-compose-workflow.yml up -d data-accessor-non-sentence-weaviate-web
             docker compose -f docker-compose-workflow.yml up -d toposoid-contents-admin-web
-            docker compose -f docker-compose-workflow.yml up -d toposoid-common-image-recognition-web          
+            docker compose -f docker-compose-workflow.yml up -d toposoid-common-image-recognition-web
             docker compose -f docker-compose-workflow.yml up -d toposoid-common-nlp-japanese-web
             docker compose -f docker-compose-workflow.yml up -d toposoid-sentence-parser-japanese-web
             docker compose -f docker-compose-workflow.yml up -d data-accessor-neo4j-web
