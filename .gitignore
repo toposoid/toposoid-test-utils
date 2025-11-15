@@ -6,3 +6,9 @@ project/target/
 *.log
 .bsp/
 docker-compose-local.yml
+docker-compose-dev.yml
+.devcontainer
+.metals
+.vscode
+project/project
+project/metals.sbt
