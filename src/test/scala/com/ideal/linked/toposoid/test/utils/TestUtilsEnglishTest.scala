@@ -19,7 +19,7 @@ package com.ideal.linked.toposoid.test.utils
 
 import com.ideal.linked.common.DeploymentConverter.conf
 import com.ideal.linked.toposoid.common.ToposoidUtils.assignId
-import com.ideal.linked.toposoid.common._
+import com.ideal.linked.toposoid.common.{FeatureType, SuperiorType, NonSentenceType, CaseGroupType, TransversalState, Neo4JUtilsImpl, ToposoidUtils}
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.{FeatureVectorIdentifier, FeatureVectorSearchResult, SingleFeatureVectorForSearch}
 import com.ideal.linked.toposoid.knowledgebase.image.model.SingleImage
 import com.ideal.linked.toposoid.knowledgebase.nlp.model.FeatureVector
@@ -58,9 +58,9 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
 
   private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
     val json: String = Json.toJson(featureVectorIdentifier).toString()
-    if (featureType.equals(SENTENCE)) {
+    if (featureType.equals(FeatureType.SENTENCE)) {
       ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    } else if (featureType.equals(IMAGE)) {
+    } else if (featureType.equals(FeatureType.IMAGE)) {
       ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
     }
   }
@@ -160,19 +160,19 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val check1: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
     assert(check1.records.size == 0)
 
-    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
     val jsonSV: String = Json.toJson(featureVectorIdentifierSV).toString()
     val featureVectorSearchResultJsonSV: String = ToposoidUtils.callComponent(jsonSV, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val checkSV = Json.parse(featureVectorSearchResultJsonSV).as[FeatureVectorSearchResult]
     assert(checkSV.ids.size == 0)
 
-    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", PROPOSITION_ID.index, UNSPECIFIED.index)
+    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
     val jsonIMGV: String = Json.toJson(featureVectorIdentifierIMGV).toString()
     val featureVectorSearchResultJsonIMGV: String = ToposoidUtils.callComponent(jsonIMGV, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val checkIMGV = Json.parse(featureVectorSearchResultJsonIMGV).as[FeatureVectorSearchResult]
     assert(checkIMGV.ids.size == 0)
 
-    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "ja_JP", DOCUMENT.index, TITLE_OF_TOP_PAGE.index)
+    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "ja_JP", SuperiorType.DOCUMENT_ID.index, NonSentenceType.TITLE_OF_TOP_PAGE.index,CaseGroupType.UNSPECIFIED.index)
     val jsonNSV: String = Json.toJson(featureVectorIdentifierNSV).toString()
     val featureVectorSearchResultJsonNSV: String = ToposoidUtils.callComponent(jsonNSV, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val resultNSV = Json.parse(featureVectorSearchResultJsonNSV).as[FeatureVectorSearchResult]
