@@ -18,7 +18,7 @@
 package com.ideal.linked.toposoid.test.utils
 
 import com.ideal.linked.common.DeploymentConverter.conf
-import com.ideal.linked.toposoid.common.{Neo4JUtils, Neo4JUtilsImpl, ToposoidUtils, TransversalState}
+import com.ideal.linked.toposoid.common.{Neo4JUtils, Neo4JUtilsImpl, ToposoidUtils, TransversalState, ActionModeType}
 import com.ideal.linked.toposoid.knowledgebase.featurevector.model.RegistContentResult
 import com.ideal.linked.toposoid.knowledgebase.regist.model.{Knowledge, KnowledgeForImage, KnowledgeForTable}
 import com.ideal.linked.toposoid.protocol.model.base.AnalyzedSentenceObjects
@@ -38,7 +38,7 @@ object TestUtils {
     val langPatternEN: Regex = "^en_.*".r
 
     //Analyze everything as simple sentences as Claims, not just sentenceType
-    val inputSentenceForParser = InputSentenceForParser(List.empty[KnowledgeForParser], List(knowledgeForParser))
+    val inputSentenceForParser = InputSentenceForParser(List.empty[KnowledgeForParser], List(knowledgeForParser), ActionModeType.REGISTRATION_MODE.index)
     val json: String = Json.toJson(inputSentenceForParser).toString()
     val parserInfo: (String, String) = knowledgeForParser.knowledge.lang match {
       case langPatternJP() => (conf.getString("TOPOSOID_SENTENCE_PARSER_JP_WEB_HOST"), conf.getString("TOPOSOID_SENTENCE_PARSER_JP_WEB_PORT"))
