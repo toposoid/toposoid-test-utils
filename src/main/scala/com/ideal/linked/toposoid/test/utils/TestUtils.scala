@@ -29,6 +29,9 @@ import play.api.libs.json.Json
 
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
+import com.ideal.linked.toposoid.protocol.model.base.VerifyingEdges
+import com.ideal.linked.toposoid.protocol.model.base.AnalyzedSentenceObject
+import com.ideal.linked.toposoid.protocol.model.base.DeductionResult
 
 object TestUtils {
 
@@ -137,4 +140,117 @@ object TestUtils {
       FeatureVectorizer.removeAllVectorByDocumentId(knowledgeForParser.knowledge.knowledgeForDocument.id, List(knowledgeForParser.propositionId), transversalState)
     })
   }
+  
+  def analyzeByBaseDeductionUnit(asosJson:String, transversalState: TransversalState):String = {
+  
+    val json = ToposoidUtils.callComponent(asosJson, conf.getString("TOPOSOID_DEDUCTION_UNIT1_HOST"), conf.getString("TOPOSOID_DEDUCTION_UNIT1_PORT"), "execute", transversalState)
+    val verifyingEdges = Json.parse(json).as[List[VerifyingEdges]]
+    val analyzedSentenceObjects = Json.parse(asosJson).as[AnalyzedSentenceObjects]
+    val asos = analyzedSentenceObjects.analyzedSentenceObjects
+    
+    val updatedAsos = asos.foldLeft(List.empty[AnalyzedSentenceObject]){
+      (acc, x) => {
+        val coveredPropositionEdges = verifyingEdges.filter(y => y.sentenceId.equals(x.knowledgeBaseSemiGlobalNode.sentenceId)).head.coveredPropositionEdges
+        val updatedDeductionReult = DeductionResult(
+          status = x.deductionResult.status, 
+          authenticityType = x.deductionResult.authenticityType, 
+          coveredPropositionEdges = coveredPropositionEdges, 
+          evidenceKnowledgeList = x.deductionResult.evidenceKnowledgeList, 
+          havePremiseInGivenProposition = x.deductionResult.havePremiseInGivenProposition, 
+          deductionPhaseType = x.deductionResult.deductionPhaseType
+        )        
+        acc :+ AnalyzedSentenceObject(x.nodeMap, x.edgeList, x.knowledgeBaseSemiGlobalNode, updatedDeductionReult)
+      }
+    }
+    Json.toJson(AnalyzedSentenceObjects(updatedAsos, analyzedSentenceObjects.deductionConfiguration)).toString
+    
+  }
+
+  def checkMatchedBothSide(json:String, sentenceId:String, verifyingEdgesList:List[VerifyingEdges], correctSize:Int ):Unit = {
+
+      val evalA:VerifyingEdges = verifyingEdgesList.filter(x => x.sentenceId.equals(sentenceId)).head
+      val coveredEdges = evalA.coveredPropositionEdges.filter(x => x.destinationNode.isConfirmed && x.sourceNode.isConfirmed)
+      assert(coveredEdges.size == correctSize)
+      if(coveredEdges.size == 0) return
+      val analyzedSentenceObjects: AnalyzedSentenceObjects = Json.parse(json).as[AnalyzedSentenceObjects]
+      //両側被覆エッジに含まれるノードのチェック
+      val targetAso = analyzedSentenceObjects.analyzedSentenceObjects.filter(x => x.knowledgeBaseSemiGlobalNode.sentenceId.equals(sentenceId)).head      
+      coveredEdges.foreach(x => {
+        assert(targetAso.nodeMap.get(x.sourceNode.terminalId).get.predicateArgumentStructure.surface.equals(x.sourceNode.terminalSurface))
+        assert(targetAso.nodeMap.get(x.destinationNode.terminalId).get.predicateArgumentStructure.surface.equals(x.destinationNode.terminalSurface))        
+      })
+
+      val sentenceIds = coveredEdges.foldLeft(List.empty[String]){
+        (acc, x) => {        
+          val sourceKnowledgeSentenceIds = x.sourceNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => {
+            acc2 + y.sentenceId
+          }}        
+          val destinationKnowledgeSentenceIds = x.destinationNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => {
+            acc2 + y.sentenceId
+          }}
+          val targetSentenceIds = sourceKnowledgeSentenceIds & destinationKnowledgeSentenceIds 
+          assert(targetSentenceIds.size > 0)
+          acc ::: targetSentenceIds.toList
+        }
+      }            
+      assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
+  }
+
+
+  def checkMatchedOneSide(json:String, sentenceId:String, verifyingEdgesList:List[VerifyingEdges], correctSize:Int ):Unit = {
+
+      val evalA:VerifyingEdges = verifyingEdgesList.filter(x => x.sentenceId.equals(sentenceId)).head
+      val coveredEdges = evalA.coveredPropositionEdges.filter(x => (x.destinationNode.isConfirmed || x.sourceNode.isConfirmed) && !(x.destinationNode.isConfirmed && x.sourceNode.isConfirmed))
+      assert(coveredEdges.size == correctSize)
+      if(coveredEdges.size == 0) return
+      val analyzedSentenceObjects: AnalyzedSentenceObjects = Json.parse(json).as[AnalyzedSentenceObjects]
+      //両側被覆エッジに含まれるノードのチェック
+      val targetAso = analyzedSentenceObjects.analyzedSentenceObjects.filter(x => x.knowledgeBaseSemiGlobalNode.sentenceId.equals(sentenceId)).head      
+      coveredEdges.foreach(x => {
+        if(x.sourceNode.isConfirmed){
+          assert(targetAso.nodeMap.get(x.sourceNode.terminalId).get.predicateArgumentStructure.surface.equals(x.sourceNode.terminalSurface))
+        }
+        if(x.destinationNode.isConfirmed){
+          assert(targetAso.nodeMap.get(x.destinationNode.terminalId).get.predicateArgumentStructure.surface.equals(x.destinationNode.terminalSurface))        
+        }        
+      })
+
+      val sentenceIds = coveredEdges.foldLeft(List.empty[String]){
+        (acc, x) => {           
+          val sourceKnowledgeSentenceIds = x.sourceNode.isConfirmed match {
+            case true => {
+              x.sourceNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => {
+                acc2 + y.sentenceId
+              }}
+            }
+            case _ => {
+              Set.empty[String]
+            }
+          }
+          val destinationKnowledgeSentenceIds = x.destinationNode.isConfirmed match {
+            case true => {
+              x.destinationNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => {
+                acc2 + y.sentenceId
+              }}
+            }
+            case _ => {
+              Set.empty[String]
+            }
+          }
+          val targetSentenceIds = sourceKnowledgeSentenceIds | destinationKnowledgeSentenceIds 
+          if((x.sourceNode.isConfirmed || x.destinationNode.isConfirmed) && !(x.sourceNode.isConfirmed && x.destinationNode.isConfirmed) ){
+            assert(targetSentenceIds.size > 0)
+          }        
+          acc ::: targetSentenceIds.toList
+        }
+      }      
+      assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
+  }
+
+  def checkNeverMatched(json:String, sentenceId:String, verifyingEdgesList:List[VerifyingEdges], correctSize:Int ):Unit = {
+      val evalA:VerifyingEdges = verifyingEdgesList.filter(x => x.sentenceId.equals(sentenceId)).head
+      val coveredEdges = evalA.coveredPropositionEdges.filter(x => !x.destinationNode.isConfirmed && !x.sourceNode.isConfirmed)
+      assert(coveredEdges.size == correctSize)
+  }
+
 }
