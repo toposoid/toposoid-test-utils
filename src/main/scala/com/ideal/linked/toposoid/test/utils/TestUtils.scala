@@ -247,10 +247,76 @@ object TestUtils {
       assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
   }
 
-  def checkNeverMatched(json:String, sentenceId:String, verifyingEdgesList:List[VerifyingEdges], correctSize:Int ):Unit = {
-      val evalA:VerifyingEdges = verifyingEdgesList.filter(x => x.sentenceId.equals(sentenceId)).head
-      val coveredEdges = evalA.coveredPropositionEdges.filter(x => !x.destinationNode.isConfirmed && !x.sourceNode.isConfirmed)
-      assert(coveredEdges.size == correctSize)
+  def checkMatchedFuzzy(json:String, sentenceId:String, verifyingEdgesList:List[VerifyingEdges], correctSize:Int ):Unit = {
+
+    val evalA:VerifyingEdges = verifyingEdgesList.filter(x => x.sentenceId.equals(sentenceId)).head
+
+    val coveredEdges = correctSize match {
+      case 0 => {
+        evalA.coveredPropositionEdges.filter(x => !x.destinationNode.isConfirmed && !x.sourceNode.isConfirmed && x.sourceNode.matchedKnowledgeNodes.size + x.destinationNode.matchedKnowledgeNodes.size == 0)
+      }
+      case _ => {
+        evalA.coveredPropositionEdges.filter(x => !x.destinationNode.isConfirmed && !x.sourceNode.isConfirmed && x.sourceNode.matchedKnowledgeNodes.size + x.destinationNode.matchedKnowledgeNodes.size > 0)        
+      }
+    } 
+    assert(coveredEdges.size == correctSize)
+    if(coveredEdges.size == 0) return
+    
+    val analyzedSentenceObjects: AnalyzedSentenceObjects = Json.parse(json).as[AnalyzedSentenceObjects]
+    //両側被覆エッジに含まれるノードのチェック
+    val targetAso = analyzedSentenceObjects.analyzedSentenceObjects.filter(x => x.knowledgeBaseSemiGlobalNode.sentenceId.equals(sentenceId)).head      
+    coveredEdges.foreach(x => {
+      
+      if(!x.sourceNode.isConfirmed){      
+        assert(targetAso.nodeMap.get(x.sourceNode.terminalId).get.predicateArgumentStructure.surface.equals(x.sourceNode.terminalSurface))
+      }
+      if(!x.destinationNode.isConfirmed){
+        assert(targetAso.nodeMap.get(x.destinationNode.terminalId).get.predicateArgumentStructure.surface.equals(x.destinationNode.terminalSurface))        
+      }        
+    })
+
+    val sentenceIds = coveredEdges.foldLeft(List.empty[String]){
+      (acc, x) => {      
+        //評価されたエッジがあるということは、ノードの関係性を保持しており、nodeIdを指定すれば必ず一意に決まる。    
+        //命題サイドのエッジのcaseNameを特定
+        val targetEdges = targetAso.edgeList.filter(z => {
+          z.sourceId.equals(x.sourceNode.terminalId) &&
+          z.destinationId.equals(x.destinationNode.terminalId)
+        })              
+        assert(targetEdges.size == 1)
+
+        val sourceKnowledgeSentenceIds = !x.sourceNode.isConfirmed match {
+          case true => {
+            x.sourceNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => { 
+              //ノード間の関係性のみチェック             
+              assert(y.caseNameOnEdge.equals(targetEdges.head.caseStr))
+              acc2 + y.sentenceId
+            }}
+          }
+          case _ => {
+            Set.empty[String]
+          }
+        }
+        val destinationKnowledgeSentenceIds = !x.destinationNode.isConfirmed match {
+          case true => {
+            x.destinationNode.matchedKnowledgeNodes.foldLeft(Set.empty[String]){(acc2, y) => {
+              //ノード間の関係性のみチェック
+              assert(y.caseNameOnEdge.equals(targetEdges.head.caseStr))
+              acc2 + y.sentenceId
+            }}
+          }
+          case _ => {
+            Set.empty[String]
+          }
+        }
+        val targetSentenceIds = sourceKnowledgeSentenceIds & destinationKnowledgeSentenceIds 
+        if(!x.sourceNode.isConfirmed && !x.destinationNode.isConfirmed){
+          assert(targetSentenceIds.size > 0)
+        }        
+        acc ::: targetSentenceIds.toList
+      }
+    }      
+    assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
   }
 
 }
