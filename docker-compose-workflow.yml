@@ -24,6 +24,12 @@ services:
       - TOPOSOID_COMMON_NLP_EN_WEB_PORT=9008
       - TOPOSOID_CONTENTS_ADMIN_HOST=toposoid-contents-admin-web
       - TOPOSOID_CONTENTS_ADMIN_PORT=9012
+      - TOPODOID_CLAUSE_DEDUCTION_UNITS=["toposoid-deduction-unit-exact-match-web", "toposoid-deduction-unit-synonym-match-web", "toposoid-deduction-unit-image-vector-match-web"]
+      - TOPODOID_CLAUSE_DEDUCTION_PORTS=["9101", "9102", "9103"]
+      - TOPODOID_CLAUSE_DEDUCTION_NAMES=["ClauseBaseMatch","ClauseSynonymMatch","ClauseImageMatch"]
+      - TOPODOID_EMBEDDING_DEDUCTION_UNITS=["toposoid-deduction-unit-sentence-vector-match-web", "toposoid-deduction-unit-whole-sentence-image-match-web"]
+      - TOPODOID_EMBEDDING_DEDUCTION_PORTS=["9103", "9105"]
+      - TOPODOID_EMBEDDING_DEDUCTION_NAMES=["EmbeddingSentenceMatch", "EmbeddingWholeSentenceImageMatch"]      
   toposoid-sentence-parser-japanese-web:
     image: toposoid/toposoid-sentence-parser-japanese-web:0.7-SNAPSHOT
     environment:
@@ -75,9 +81,13 @@ services:
     ports:
       - 9008:9008
   corenlp:
-    image: toposoid/corenlp:3.4.2-lowspec
+    image: toposoid/corenlp:3.4.2
     ports:
       - 9000:9000
+    environment:
+      - TOPOSOID_JVM_XMS=512m
+      - TOPOSOID_JVM_XMX=2g
+      - TOPOSOID_JVM_XSS=512k          
   neo4j:
     image: neo4j:4.4.23
     ports:
