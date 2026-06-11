@@ -353,34 +353,33 @@ object TestUtils {
     assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
   }
 
-  def setBaseUnitEndPoints(deductionPhaseType:DeductionPhaseType, transversalState:TransversalState):Unit = {
-      
+  private def chooseDeductionUnitEndPoints(prefixEnvName:String, selectIndice:List[Int]):Seq[Endpoint] = {
+    val hosts = Json.parse(conf.getString(s"${prefixEnvName}_DEDUCTION_UNITS")).as[List[String]]
+    val ports = Json.parse(conf.getString(s"${prefixEnvName}_DEDUCTION_PORTS")).as[List[String]]
+    val names = Json.parse(conf.getString(s"${prefixEnvName}_DEDUCTION_NAMES")).as[List[String]]
+    hosts.zipWithIndex.lazyZip(ports).lazyZip(names).map { 
+      case ((x, idx), y, z) => 
+        selectIndice.size match {
+          case 0 => Option(Endpoint(x,y,z))
+          case _ => {
+            if (selectIndice.contains(idx)) Option(Endpoint(x,y,z)) else None
+          }
+        }            
+    }.toSeq.flatten
+  }
+
+  def setDeductionUnitEndPoints(deductionPhaseType:DeductionPhaseType, transversalState:TransversalState, selectIndice:List[Int] = List.empty[Int]):Unit = {
     deductionPhaseType match {
       case DeductionPhaseType.DEDUCTION_SENTENCE_BASE => {      
-        val hosts = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_UNITS")).as[List[String]]
-        val ports = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_PORTS")).as[List[String]]
-        val names = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_NAMES")).as[List[String]]
-        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
-          Endpoint(x,y,z)
-        }.toSeq
+        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_EMBEDDING", selectIndice)
         InMemoryDbUtils.setEmbedingDeducitonUnitEndPoints(endPoints, transversalState)  
       }
       case DeductionPhaseType.DEDUCTION_TERM_BASE => {        
-        val hosts = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_UNITS")).as[List[String]]
-        val ports = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_PORTS")).as[List[String]]
-        val names = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_NAMES")).as[List[String]]
-        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
-          Endpoint(x,y,z)
-        }.toSeq
+        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_CLAUSE", selectIndice)
         InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
       }
       case DeductionPhaseType.DEDUCTION_PHRASE_BASE => {
-        val hosts = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_UNITS")).as[List[String]]
-        val ports = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_PORTS")).as[List[String]]
-        val names = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_NAMES")).as[List[String]]
-        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
-          Endpoint(x,y,z)
-        }.toSeq
+        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_HYBRID", selectIndice)
         //InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
       }
     }
