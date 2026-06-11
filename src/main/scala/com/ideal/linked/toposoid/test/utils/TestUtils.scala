@@ -32,6 +32,9 @@ import scala.util.matching.Regex
 import com.ideal.linked.toposoid.protocol.model.base.VerifyingEdges
 import com.ideal.linked.toposoid.protocol.model.base.AnalyzedSentenceObject
 import com.ideal.linked.toposoid.protocol.model.base.DeductionResult
+import com.ideal.linked.toposoid.protocol.model.frontend.Endpoint
+import com.ideal.linked.toposoid.common.InMemoryDbUtils
+import com.ideal.linked.toposoid.common.DeductionPhaseType
 
 object TestUtils {
 
@@ -143,7 +146,39 @@ object TestUtils {
   
   def analyzeByBaseDeductionUnit(asosJson:String, transversalState: TransversalState):String = {
   
-    val json = ToposoidUtils.callComponent(asosJson, conf.getString("TOPOSOID_DEDUCTION_UNIT1_HOST"), conf.getString("TOPOSOID_DEDUCTION_UNIT1_PORT"), "execute", transversalState)
+    val host = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_UNITS")).as[List[String]].head
+    val port = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_PORTS")).as[List[String]].head
+
+    //val json = ToposoidUtils.callComponent(asosJson, conf.getString("TOPOSOID_DEDUCTION_UNIT1_HOST"), conf.getString("TOPOSOID_DEDUCTION_UNIT1_PORT"), "execute", transversalState)
+    val json = ToposoidUtils.callComponent(asosJson, host, port, "execute", transversalState)
+    val verifyingEdges = Json.parse(json).as[List[VerifyingEdges]]
+    val analyzedSentenceObjects = Json.parse(asosJson).as[AnalyzedSentenceObjects]
+    val asos = analyzedSentenceObjects.analyzedSentenceObjects
+    
+    val updatedAsos = asos.foldLeft(List.empty[AnalyzedSentenceObject]){
+      (acc, x) => {
+        val coveredPropositionEdges = verifyingEdges.filter(y => y.sentenceId.equals(x.knowledgeBaseSemiGlobalNode.sentenceId)).head.coveredPropositionEdges
+        val updatedDeductionReult = DeductionResult(
+          status = x.deductionResult.status, 
+          authenticityType = x.deductionResult.authenticityType, 
+          coveredPropositionEdges = coveredPropositionEdges, 
+          evidenceKnowledgeList = x.deductionResult.evidenceKnowledgeList, 
+          havePremiseInGivenProposition = x.deductionResult.havePremiseInGivenProposition, 
+          deductionPhaseType = x.deductionResult.deductionPhaseType
+        )        
+        acc :+ AnalyzedSentenceObject(x.nodeMap, x.edgeList, x.knowledgeBaseSemiGlobalNode, updatedDeductionReult)
+      }
+    }
+    Json.toJson(AnalyzedSentenceObjects(updatedAsos, analyzedSentenceObjects.deductionConfiguration)).toString    
+  }
+
+
+  def analyzeByBaseDeductionUnitForSemiGlobal(asosJson:String, transversalState: TransversalState):String = {
+  
+    val host = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_UNITS")).as[List[String]].head
+    val port = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_PORTS")).as[List[String]].head
+
+    val json = ToposoidUtils.callComponent(asosJson, host, port, "execute", transversalState)
     val verifyingEdges = Json.parse(json).as[List[VerifyingEdges]]
     val analyzedSentenceObjects = Json.parse(asosJson).as[AnalyzedSentenceObjects]
     val asos = analyzedSentenceObjects.analyzedSentenceObjects
@@ -317,5 +352,39 @@ object TestUtils {
     }      
     assert(sentenceIds.groupBy(identity).filter(x => x._2.size >= correctSize).size > 0)
   }
+
+  def setBaseUnitEndPoints(deductionPhaseType:DeductionPhaseType, transversalState:TransversalState):Unit = {
+      
+    deductionPhaseType match {
+      case DeductionPhaseType.DEDUCTION_SENTENCE_BASE => {      
+        val hosts = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_UNITS")).as[List[String]]
+        val ports = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_PORTS")).as[List[String]]
+        val names = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_NAMES")).as[List[String]]
+        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
+          Endpoint(x,y,z)
+        }.toSeq
+        InMemoryDbUtils.setEmbedingDeducitonUnitEndPoints(endPoints, transversalState)  
+      }
+      case DeductionPhaseType.DEDUCTION_TERM_BASE => {        
+        val hosts = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_UNITS")).as[List[String]]
+        val ports = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_PORTS")).as[List[String]]
+        val names = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_NAMES")).as[List[String]]
+        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
+          Endpoint(x,y,z)
+        }.toSeq
+        InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
+      }
+      case DeductionPhaseType.DEDUCTION_PHRASE_BASE => {
+        val hosts = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_UNITS")).as[List[String]]
+        val ports = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_PORTS")).as[List[String]]
+        val names = Json.parse(conf.getString("TOPODOID_HYBRID_DEDUCTION_NAMES")).as[List[String]]
+        val endPoints: Seq[Endpoint] = hosts.lazyZip(ports).lazyZip(names).map { (x, y, z) =>
+          Endpoint(x,y,z)
+        }.toSeq
+        //InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
+      }
+    }
+  }
+
 
 }
