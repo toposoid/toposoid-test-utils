@@ -146,8 +146,8 @@ object TestUtils {
   
   def analyzeByBaseDeductionUnit(asosJson:String, transversalState: TransversalState):String = {
   
-    val host = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_UNITS")).as[List[String]].head
-    val port = Json.parse(conf.getString("TOPODOID_CLAUSE_DEDUCTION_PORTS")).as[List[String]].head
+    val host = Json.parse(conf.getString("TOPOSOID_CLAUSE_DEDUCTION_UNITS")).as[List[String]].head
+    val port = Json.parse(conf.getString("TOPOSOID_CLAUSE_DEDUCTION_PORTS")).as[List[String]].head
 
     //val json = ToposoidUtils.callComponent(asosJson, conf.getString("TOPOSOID_DEDUCTION_UNIT1_HOST"), conf.getString("TOPOSOID_DEDUCTION_UNIT1_PORT"), "execute", transversalState)
     val json = ToposoidUtils.callComponent(asosJson, host, port, "execute", transversalState)
@@ -175,8 +175,8 @@ object TestUtils {
 
   def analyzeByBaseDeductionUnitForSemiGlobal(asosJson:String, transversalState: TransversalState):String = {
   
-    val host = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_UNITS")).as[List[String]].head
-    val port = Json.parse(conf.getString("TOPODOID_EMBEDDING_DEDUCTION_PORTS")).as[List[String]].head
+    val host = Json.parse(conf.getString("TOPOSOID_EMBEDDING_DEDUCTION_UNITS")).as[List[String]].head
+    val port = Json.parse(conf.getString("TOPOSOID_EMBEDDING_DEDUCTION_PORTS")).as[List[String]].head
 
     val json = ToposoidUtils.callComponent(asosJson, host, port, "execute", transversalState)
     val verifyingEdges = Json.parse(json).as[List[VerifyingEdges]]
@@ -371,15 +371,15 @@ object TestUtils {
   def setDeductionUnitEndPoints(deductionPhaseType:DeductionPhaseType, transversalState:TransversalState, selectIndice:List[Int] = List.empty[Int]):Unit = {
     deductionPhaseType match {
       case DeductionPhaseType.DEDUCTION_SENTENCE_BASE => {      
-        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_EMBEDDING", selectIndice)
+        val endPoints = chooseDeductionUnitEndPoints("TOPOSOID_EMBEDDING", selectIndice)
         InMemoryDbUtils.setEmbedingDeducitonUnitEndPoints(endPoints, transversalState)  
       }
       case DeductionPhaseType.DEDUCTION_TERM_BASE => {        
-        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_CLAUSE", selectIndice)
+        val endPoints = chooseDeductionUnitEndPoints("TOPOSOID_CLAUSE", selectIndice)
         InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
       }
       case DeductionPhaseType.DEDUCTION_PHRASE_BASE => {
-        val endPoints = chooseDeductionUnitEndPoints("TOPODOID_HYBRID", selectIndice)
+        val endPoints = chooseDeductionUnitEndPoints("TOPOSOID_HYBRID", selectIndice)
         //InMemoryDbUtils.setClauseDeducitonUnitEndPoints(endPoints, transversalState)  
       }
     }
