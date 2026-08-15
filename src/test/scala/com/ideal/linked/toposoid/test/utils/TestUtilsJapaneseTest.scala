@@ -30,6 +30,7 @@ import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import org.scalatest.flatspec.AnyFlatSpec
 //import io.jvm.uuid.UUID
 import play.api.libs.json.Json
+import com.ideal.linked.toposoid.test.utils.TestUtils.getImageVector
 
 class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeAndAfterAll {
   val transversalState: TransversalState = TransversalState(userId = "test-user", username = "guest", roleId = 0, csrfToken = "")
@@ -64,13 +65,14 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
       ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
     }
   }
-  */
+  
   private def getImageVector(url: String): FeatureVector = {
     val singleImage = SingleImage(url)
     val json: String = Json.toJson(singleImage).toString()
     val featureVectorJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_HOST"), conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_PORT"), "getFeatureVector", transversalState)
     Json.parse(featureVectorJson).as[FeatureVector]
   }
+  */
 
   "The data " should "be properly registered in GraphDB and VectorDB." in {
     val documentId = java.util.UUID.randomUUID().toString
@@ -125,7 +127,7 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
           case "犬が" => urlDog
           case _ => "BAD URL"
         }
-        val vector = this.getImageVector(url)
+        val vector = getImageVector(url, transversalState)
         val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]

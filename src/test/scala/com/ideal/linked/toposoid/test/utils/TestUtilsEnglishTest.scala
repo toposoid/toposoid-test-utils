@@ -31,6 +31,7 @@ import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import play.api.libs.json.Json
+import com.ideal.linked.toposoid.test.utils.TestUtils.getImageVector
 
 class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAndAfterAll {
   val transversalState: TransversalState = TransversalState(userId = "test-user", username = "guest", roleId = 0, csrfToken = "")
@@ -55,7 +56,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
   override def afterAll(): Unit = {
     deleteNeo4JAllData(transversalState)
   }
-
+  /*
   private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
     val json: String = Json.toJson(featureVectorIdentifier).toString()
     if (featureType.equals(FeatureType.SENTENCE)) {
@@ -71,6 +72,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val featureVectorJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_HOST"), conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_PORT"), "getFeatureVector", transversalState)
     Json.parse(featureVectorJson).as[FeatureVector]
   }
+  */
 
   "The data " should "be properly registered in GraphDB and VectorDB." in {
     val documentId = java.util.UUID.randomUUID().toString
@@ -134,7 +136,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
           case "dog" => urlDog
           case _ => "BAD URL"
         }
-        val vector = this.getImageVector(url)
+        val vector = getImageVector(url, transversalState)
         val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
