@@ -31,6 +31,9 @@ import com.ideal.linked.toposoid.vectorizer.FeatureVectorizer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import play.api.libs.json.Json
+import com.ideal.linked.toposoid.test.utils.TestUtils.getImageVector
+import com.ideal.linked.toposoid.test.utils.TestUtils.uploadImage
+import com.ideal.linked.toposoid.test.utils.TestUtils.uploadTable
 
 class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAndAfterAll {
   val transversalState: TransversalState = TransversalState(userId = "test-user", username = "guest", roleId = 0, csrfToken = "")
@@ -44,6 +47,8 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
   before {
     ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
     ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
+    ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
+    ToposoidUtils.callComponent("{}", conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_PORT"), "createSchema", transversalState)
     deleteNeo4JAllData(transversalState)
     Thread.sleep(1000)
   }
@@ -55,7 +60,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
   override def afterAll(): Unit = {
     deleteNeo4JAllData(transversalState)
   }
-
+  /*
   private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
     val json: String = Json.toJson(featureVectorIdentifier).toString()
     if (featureType.equals(FeatureType.SENTENCE)) {
@@ -71,30 +76,41 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val featureVectorJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_HOST"), conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_PORT"), "getFeatureVector", transversalState)
     Json.parse(featureVectorJson).as[FeatureVector]
   }
+  */
 
   "The data " should "be properly registered in GraphDB and VectorDB." in {
+
     val documentId = java.util.UUID.randomUUID().toString
     val knowledge1 = Knowledge(sentence = "This is premise-1.", lang = "en_US", extentInfoJson = "{}")
     val knowledge2 = Knowledge(sentence = "This is premise-2.", lang = "en_US", extentInfoJson = "{}")
     val reference3 = Reference(url = "", surface = "cats", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/val2017/000000039769.jpg", metaInformations = List.empty[String])
     val imageReference3 = ImageReference(reference = reference3, x = 27, y = 41, width = 287, height = 435)
-    val knowledgeForImages3 = KnowledgeForImage(id = "", imageReference = imageReference3)
+    val knowledgeForImages3 = uploadImage(KnowledgeForImage(id = "", imageReference = imageReference3), transversalState)
     val knowledge3 = Knowledge(sentence = "There are two cats.", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
 
+    val reference3a= Reference(url = "", surface = "data", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086170&fileKind=0", metaInformations = List.empty[String])
+    val tableReference3a = TableReference(reference = reference3a, skipHeaderRows= 5, multiHeaderRowsForExcel=4, sheetNameForExcel="se0101")
+    val knowledgeForTable3a = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference3a), transversalState)
+    val knowledge3a = Knowledge(sentence = "There is a data.", lang = "en_US", extentInfoJson = "{}", knowledgeForTables=List(knowledgeForTable3a))
     val knowledgeForDocument = KnowledgeForDocument(id = documentId, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
 
     val knowledge4 = Knowledge(sentence = "This is claim-1.", lang = "en_US", extentInfoJson = "{}", knowledgeForDocument=knowledgeForDocument)
     val knowledge5 = Knowledge(sentence = "This is claim-2.", lang = "en_US", extentInfoJson = "{}")
     val reference6 = Reference(url = "", surface = "dog", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "http://images.cocodataset.org/train2017/000000428746.jpg", metaInformations = List.empty[String])
     val imageReference6 = ImageReference(reference = reference6, x = 435, y = 227, width = 91, height = 69)
-    val knowledgeForImages6 = KnowledgeForImage(id = "", imageReference = imageReference6)
+    val knowledgeForImages6 = uploadImage(KnowledgeForImage(id = "", imageReference = imageReference6), transversalState)
     val knowledge6 = Knowledge(sentence = "There is a dog", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages6))
 
+    val reference7 = Reference(url = "", surface = "evidence", surfaceIndex = 2, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086171&fileKind=0", metaInformations = List.empty[String])
+    val tableReference7 = TableReference(reference = reference7, skipHeaderRows= 8, multiHeaderRowsForExcel=4, sheetNameForExcel="se0102")
+    val knowledgeForTable7 = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference7), transversalState)
+    val knowledge7 = Knowledge(sentence = "There is evidence.", lang = "en_US", extentInfoJson = "{}", knowledgeForTables = List(knowledgeForTable7))
+
     val knowledgeSentenceSet = KnowledgeSentenceSet(
-      premiseList = List(knowledge1, knowledge2, knowledge3),
-      premiseLogicRelation = List(PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2)),
-      claimList = List(knowledge4, knowledge5, knowledge6),
-      claimLogicRelation = List(PropositionRelation(operator = "OR", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2))
+      premiseList = List(knowledge1, knowledge2, knowledge3, knowledge3a),
+      premiseLogicRelation = List(PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 3)),
+      claimList = List(knowledge4, knowledge5, knowledge6, knowledge7),
+      claimLogicRelation = List(PropositionRelation(operator = "OR", sourceIndex = 0, destinationIndex = 1), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 2), PropositionRelation(operator = "AND", sourceIndex = 0, destinationIndex = 3))
     )
     val (knowledgeSentenceSetForParser, propositionId) = assignId(knowledgeSentenceSet)
     TestUtils.registerData(knowledgeSentenceSetForParser, transversalState)
@@ -110,8 +126,6 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     assert(queryResult3.records.size == 1)
     val result4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH x = (:GlobalNode{titleOfTopPage:'TestTitle'}) RETURN x", transversalState)
     assert(result4.records.size == 1)
-
-
     val queryResult4: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/val2017/000000039769.jpg'})-[:ImageEdge]->(t:PremiseNode{surface:'cats'}) RETURN s, t", transversalState)
     assert(queryResult4.records.size == 1)
 
@@ -119,6 +133,14 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val queryResult5: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:ImageNode{source:'http://images.cocodataset.org/train2017/000000428746.jpg'})-[:ImageEdge]->(t:ClaimNode{surface:'dog'}) RETURN s, t", transversalState)
     assert(queryResult5.records.size == 1)
     val urlDog = queryResult5.records.head.head.value.featureNode.get.url
+
+
+    val result5: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:TableNode{source:'https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086170&fileKind=0'})-[:TableEdge]->(t:PremiseNode{surface:'data'}) RETURN s, t", transversalState)
+    val urlTable1 = result5.records.head.head.value.featureNode.get.url
+    assert(result5.records.size == 1)
+    val result6: Neo4jRecords = neo4JUtils.executeQueryAndReturn("MATCH (s:TableNode{source:'https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086171&fileKind=0'})-[:TableEdge]->(t:ClaimNode{surface:'evidence'}) RETURN s, t", transversalState)
+    val urlTable2 = result6.records.head.head.value.featureNode.get.url
+    assert(result6.records.size == 1)
 
     for (knowledge <- knowledgeSentenceSet.premiseList ::: knowledgeSentenceSet.claimList) {
       val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.sentence, "en_US", "{}"), transversalState)
@@ -134,7 +156,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
           case "dog" => urlDog
           case _ => "BAD URL"
         }
-        val vector = this.getImageVector(url)
+        val vector = getImageVector(url, transversalState)
         val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
         val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
         val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
@@ -142,7 +164,20 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
         //result.ids.map(x => deleteFeatureVector(x, IMAGE))
       })
 
-      /*TODO implementation for knowledgeForTables*/
+      knowledge.knowledgeForTables.foreach(x => {
+        val url: String = x.tableReference.reference.surface match {
+          case "data" => urlTable1
+          case "evidence" => urlTable2          
+          case _ => "BAD URL"
+        }
+        val vector = TestUtils.getTableVector(url, transversalState)
+        val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
+        val featureVectorSearchResultJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_PORT"), "search", transversalState)
+        val result = Json.parse(featureVectorSearchResultJson).as[FeatureVectorSearchResult]
+        assert(result.ids.size > 0 && result.similarities.filter(x => x > 0.95).size > 0)
+        result.ids.map(x => TestUtils.deleteFeatureVector(x, FeatureType.TABLE, transversalState))
+      })
+
       if (!knowledge.knowledgeForDocument.id.equals("")) {
         val vector = FeatureVectorizer.getSentenceVector(Knowledge(knowledge.knowledgeForDocument.titleOfTopPage, "en_US", "{}"), transversalState)
         val json: String = Json.toJson(SingleFeatureVectorForSearch(vector = vector.vector, num = 1)).toString()
@@ -160,25 +195,30 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val check1: Neo4jRecords = neo4JUtils.executeQueryAndReturn(query, transversalState)
     assert(check1.records.size == 0)
 
-    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
+    val featureVectorIdentifierSV = FeatureVectorIdentifier(propositionId, "-", -1, "en_US", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
     val jsonSV: String = Json.toJson(featureVectorIdentifierSV).toString()
     val featureVectorSearchResultJsonSV: String = ToposoidUtils.callComponent(jsonSV, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val checkSV = Json.parse(featureVectorSearchResultJsonSV).as[FeatureVectorSearchResult]
     assert(checkSV.ids.size == 0)
 
-    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "ja_JP", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
+    val featureVectorIdentifierIMGV = FeatureVectorIdentifier(propositionId, "-", -1, "en_US", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index,CaseGroupType.UNSPECIFIED.index)
     val jsonIMGV: String = Json.toJson(featureVectorIdentifierIMGV).toString()
     val featureVectorSearchResultJsonIMGV: String = ToposoidUtils.callComponent(jsonIMGV, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val checkIMGV = Json.parse(featureVectorSearchResultJsonIMGV).as[FeatureVectorSearchResult]
     assert(checkIMGV.ids.size == 0)
 
-    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "ja_JP", SuperiorType.DOCUMENT_ID.index, NonSentenceType.TITLE_OF_TOP_PAGE.index,CaseGroupType.UNSPECIFIED.index)
+    val featureVectorIdentifierNSV = FeatureVectorIdentifier(documentId, "-", -1, "en_US", SuperiorType.DOCUMENT_ID.index, NonSentenceType.TITLE_OF_TOP_PAGE.index,CaseGroupType.UNSPECIFIED.index)
     val jsonNSV: String = Json.toJson(featureVectorIdentifierNSV).toString()
     val featureVectorSearchResultJsonNSV: String = ToposoidUtils.callComponent(jsonNSV, conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_NON_SENTENCE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
     val resultNSV = Json.parse(featureVectorSearchResultJsonNSV).as[FeatureVectorSearchResult]
     assert(resultNSV.ids.size == 0)
 
-
+    val featureVectorIdentifierTABLV = FeatureVectorIdentifier(propositionId, "-", -1, "en_US", SuperiorType.PROPOSITION_ID.index, NonSentenceType.UNSPECIFIED.index, CaseGroupType.UNSPECIFIED.index)
+    val jsonTABLV: String = Json.toJson(featureVectorIdentifierTABLV).toString()
+    val featureVectorSearchResultJsonTABLV: String = ToposoidUtils.callComponent(jsonTABLV, conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_TABLE_VECTORDB_ACCESSOR_PORT"), "searchBySuperiorId", transversalState)
+    val resultTABLV = Json.parse(featureVectorSearchResultJsonTABLV).as[FeatureVectorSearchResult]
+    assert(resultTABLV.ids.size == 0)
+    
   }
 
 
