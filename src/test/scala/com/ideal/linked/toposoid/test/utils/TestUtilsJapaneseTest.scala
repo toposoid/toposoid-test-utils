@@ -90,7 +90,7 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
     val knowledge3 = Knowledge(sentence = "猫が２匹います。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
     
     val reference3a= Reference(url = "", surface = "データが", surfaceIndex = 0, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086170&fileKind=0", metaInformations = List.empty[String])
-    val tableReference3a = TableReference(reference = reference3a, skipHeaderRows= 5, multiHeaderRowsForExcel=4, sheetNameForExcel="se0101")
+    val tableReference3a = TableReference(reference = reference3a, skipHeaderRows= 5, multiHeaderRows=4, sheetNameForExcel="se0101")
     val knowledgeForTable3a = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference3a), transversalState)
     val knowledge3a = Knowledge(sentence = "データがあります。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForTables=List(knowledgeForTable3a))
 
@@ -104,7 +104,7 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
     val knowledge6 = Knowledge(sentence = "犬が1匹います。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages6))
 
     val reference7 = Reference(url = "", surface = "証拠が", surfaceIndex = 0, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086171&fileKind=0", metaInformations = List.empty[String])
-    val tableReference7 = TableReference(reference = reference7, skipHeaderRows= 8, multiHeaderRowsForExcel=4, sheetNameForExcel="se0102")
+    val tableReference7 = TableReference(reference = reference7, skipHeaderRows= 8, multiHeaderRows=4, sheetNameForExcel="se0102")
     val knowledgeForTable7 = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference7), transversalState)
     val knowledge7 = Knowledge(sentence = "証拠があります。", lang = "ja_JP", extentInfoJson = "{}", knowledgeForTables = List(knowledgeForTable7))
 
