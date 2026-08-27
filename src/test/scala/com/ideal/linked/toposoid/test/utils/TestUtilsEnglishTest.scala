@@ -89,7 +89,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val knowledge3 = Knowledge(sentence = "There are two cats.", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages3))
 
     val reference3a= Reference(url = "", surface = "data", surfaceIndex = 3, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086170&fileKind=0", metaInformations = List.empty[String])
-    val tableReference3a = TableReference(reference = reference3a, skipHeaderRows= 5, multiHeaderRowsForExcel=4, sheetNameForExcel="se0101")
+    val tableReference3a = TableReference(reference = reference3a, skipHeaderRows= 5, multiHeaderRows=4, sheetNameForExcel="se0101")
     val knowledgeForTable3a = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference3a), transversalState)
     val knowledge3a = Knowledge(sentence = "There is a data.", lang = "en_US", extentInfoJson = "{}", knowledgeForTables=List(knowledgeForTable3a))
     val knowledgeForDocument = KnowledgeForDocument(id = documentId, filename = "Test.pdf", url = "http://example.com/Test.pdf", titleOfTopPage = "TestTitle")
@@ -102,7 +102,7 @@ class TestUtilsEnglishTest extends AnyFlatSpec with BeforeAndAfter with BeforeAn
     val knowledge6 = Knowledge(sentence = "There is a dog", lang = "en_US", extentInfoJson = "{}", knowledgeForImages = List(knowledgeForImages6))
 
     val reference7 = Reference(url = "", surface = "evidence", surfaceIndex = 2, isWholeSentence = false, originalUrlOrReference = "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001086171&fileKind=0", metaInformations = List.empty[String])
-    val tableReference7 = TableReference(reference = reference7, skipHeaderRows= 8, multiHeaderRowsForExcel=4, sheetNameForExcel="se0102")
+    val tableReference7 = TableReference(reference = reference7, skipHeaderRows= 8, multiHeaderRows=4, sheetNameForExcel="se0102")
     val knowledgeForTable7 = uploadTable(KnowledgeForTable(id = "", tableReference = tableReference7), transversalState)
     val knowledge7 = Knowledge(sentence = "There is evidence.", lang = "en_US", extentInfoJson = "{}", knowledgeForTables = List(knowledgeForTable7))
 

@@ -517,7 +517,7 @@ object TestUtils {
     val uploadResult = Json.parse(responseJson).as[UploadResult]    
     val tableReferenceOrg = knowledgeForTable.tableReference.reference
     val reference = Reference(url = uploadResult.url, surface = tableReferenceOrg.surface, surfaceIndex = tableReferenceOrg.surfaceIndex, isWholeSentence = tableReferenceOrg.isWholeSentence, originalUrlOrReference = knowledgeForTable.tableReference.reference.originalUrlOrReference, metaInformations = List.empty[String])
-    val tableReference = TableReference(reference=reference, skipHeaderRows = knowledgeForTable.tableReference.skipHeaderRows, skipRowList = knowledgeForTable.tableReference.skipRowList, multiHeaderRowsForExcel =  knowledgeForTable.tableReference.multiHeaderRowsForExcel, sheetNameForExcel =  knowledgeForTable.tableReference.sheetNameForExcel)
+    val tableReference = TableReference(reference=reference, skipHeaderRows = knowledgeForTable.tableReference.skipHeaderRows, skipRowList = knowledgeForTable.tableReference.skipRowList, multiHeaderRows =  knowledgeForTable.tableReference.multiHeaderRows, sheetNameForExcel =  knowledgeForTable.tableReference.sheetNameForExcel)
     KnowledgeForTable(id = uploadResult.id, tableReference = tableReference)
 
   }  
