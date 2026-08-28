@@ -57,6 +57,10 @@ import play.api.libs.json.{Json, OWrites, Reads}
 import com.ideal.linked.toposoid.knowledgebase.image.model.RegisteredImageContentResult
 import com.ideal.linked.toposoid.knowledgebase.table.model.RegisteredTableContentResult
 import com.ideal.linked.toposoid.knowledgebase.regist.model.TableReference
+import com.ideal.linked.toposoid.knowledgebase.model.LocalContextForFeature
+import com.ideal.linked.toposoid.knowledgebase.model.KnowledgeFeatureReference
+import com.ideal.linked.toposoid.knowledgebase.model.KnowledgeBaseSemiGlobalNode
+import com.ideal.linked.toposoid.common.DataEntryType
 
 case class UploadResult(id: String, url:String, status:Int)
 object UploadResult {
@@ -521,5 +525,80 @@ object TestUtils {
     KnowledgeForTable(id = uploadResult.id, tableReference = tableReference)
 
   }  
+
+
+  def getAnalyzedSentenceObjectsJsonForSemiGlobal(lang:String,inputSentenceForParser: InputSentenceForParser, transversalState:TransversalState/*, knowledgeForImages:List[KnowledgeForImage]=List.empty[KnowledgeForImage], knowledgeForTables:List[KnowledgeForTable]=List.empty[KnowledgeForTable]*/): String = {
+    
+    val inputSentenceForParserJson = Json.toJson(inputSentenceForParser).toString
+    val json = lang match {
+      case "ja_JP" => ToposoidUtils.callComponent(inputSentenceForParserJson, conf.getString("TOPOSOID_SENTENCE_PARSER_JP_WEB_HOST"), conf.getString("TOPOSOID_SENTENCE_PARSER_JP_WEB_PORT"), "analyze", transversalState)
+      case "en_US" => ToposoidUtils.callComponent(inputSentenceForParserJson, conf.getString("TOPOSOID_SENTENCE_PARSER_EN_WEB_HOST"), conf.getString("TOPOSOID_SENTENCE_PARSER_EN_WEB_PORT"), "analyze", transversalState)
+    }
+
+    val asos: AnalyzedSentenceObjects = Json.parse(json).as[AnalyzedSentenceObjects]
+    val updatedAsos = asos.analyzedSentenceObjects.foldLeft(List.empty[AnalyzedSentenceObject]) {      
+      (acc, x) => {
+
+        val targetKnoledge = (inputSentenceForParser.premise ::: inputSentenceForParser.claim).filter(y => y.sentenceId.equals(x.knowledgeBaseSemiGlobalNode.sentenceId)).head
+
+        
+        val knowledgeFeatureReferenceImage: List[KnowledgeFeatureReference] = targetKnoledge.knowledge.knowledgeForImages.map(y => {          
+          val json: String = Json.toJson(y).toString()
+          val knowledgeForImageJson: String = ToposoidUtils.callComponent(json,
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_HOST"),
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_PORT"),
+            "convertImage", transversalState)
+          val registeredContentResult: RegisteredImageContentResult = Json.parse(knowledgeForImageJson).as[RegisteredImageContentResult]
+          if (registeredContentResult.statusInfo.status.equals("ERROR")) throw new Exception(registeredContentResult.statusInfo.message)          
+          KnowledgeFeatureReference(
+            propositionId = x.knowledgeBaseSemiGlobalNode.propositionId,
+            sentenceId = x.knowledgeBaseSemiGlobalNode.sentenceId,
+            featureId = registeredContentResult.knowledgeForImage.id,
+            featureType = FeatureType.IMAGE.index,
+            url = registeredContentResult.knowledgeForImage.imageReference.reference.url,
+            source = registeredContentResult.knowledgeForImage.imageReference.reference.originalUrlOrReference,
+            featureInputType = DataEntryType.MANUAL.index)        
+        })
+
+        val knowledgeFeatureReferenceTable: List[KnowledgeFeatureReference] = targetKnoledge.knowledge.knowledgeForTables.map(y => {          
+          val json: String = Json.toJson(KnowledgeForTable(y.id, y.tableReference)).toString()
+          val knowledgeForTableJson: String = ToposoidUtils.callComponent(json,
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_HOST"),
+            conf.getString("TOPOSOID_CONTENTS_ADMIN_PORT"),
+            "convertTable", transversalState)
+          val registeredContentResult: RegisteredTableContentResult = Json.parse(knowledgeForTableJson).as[RegisteredTableContentResult]
+          if (registeredContentResult.statusInfo.status.equals("ERROR")) throw new Exception(registeredContentResult.statusInfo.message)
+          KnowledgeFeatureReference(
+            propositionId = x.knowledgeBaseSemiGlobalNode.propositionId,
+            sentenceId = x.knowledgeBaseSemiGlobalNode.sentenceId,
+            featureId = registeredContentResult.knowledgeForTable.id,
+            featureType = FeatureType.IMAGE.index,
+            url = registeredContentResult.knowledgeForTable.tableReference.reference.url,
+            source = registeredContentResult.knowledgeForTable.tableReference.reference.originalUrlOrReference,
+            featureInputType = DataEntryType.MANUAL.index)                   
+        })
+
+
+        val localContextForFeature = LocalContextForFeature(
+          x.knowledgeBaseSemiGlobalNode.localContextForFeature.lang,knowledgeFeatureReferenceImage:::knowledgeFeatureReferenceTable)
+
+        val knowledgeBaseSemiGlobalNode = KnowledgeBaseSemiGlobalNode(
+          sentenceId = x.knowledgeBaseSemiGlobalNode.sentenceId,
+          propositionId = x.knowledgeBaseSemiGlobalNode.propositionId,
+          documentId = x.knowledgeBaseSemiGlobalNode.documentId,
+          sentence = x.knowledgeBaseSemiGlobalNode.sentence,
+          sentenceType = x.knowledgeBaseSemiGlobalNode.sentenceType,
+          localContextForFeature = localContextForFeature)
+
+        acc :+ AnalyzedSentenceObject(
+          nodeMap = x.nodeMap,
+          edgeList = x.edgeList,
+          knowledgeBaseSemiGlobalNode = knowledgeBaseSemiGlobalNode,
+          deductionResult = x.deductionResult)
+      }
+    }
+    Json.toJson(AnalyzedSentenceObjects(updatedAsos, asos.deductionConfiguration)).toString()
+  }
+
 
 }
