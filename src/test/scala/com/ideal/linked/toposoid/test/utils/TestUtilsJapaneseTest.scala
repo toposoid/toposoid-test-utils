@@ -62,24 +62,6 @@ class TestUtilsJapaneseTest extends AnyFlatSpec with BeforeAndAfter with BeforeA
     deleteNeo4JAllData(transversalState)
   }
 
-  /*
-  private def deleteFeatureVector(featureVectorIdentifier: FeatureVectorIdentifier, featureType: FeatureType): Unit = {
-    val json: String = Json.toJson(featureVectorIdentifier).toString()
-    if (featureType.equals(SENTENCE)) {
-      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_SENTENCE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    } else if (featureType.equals(IMAGE)) {
-      ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_HOST"), conf.getString("TOPOSOID_IMAGE_VECTORDB_ACCESSOR_PORT"), "delete", transversalState)
-    }
-  }
-  
-  private def getImageVector(url: String): FeatureVector = {
-    val singleImage = SingleImage(url)
-    val json: String = Json.toJson(singleImage).toString()
-    val featureVectorJson: String = ToposoidUtils.callComponent(json, conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_HOST"), conf.getString("TOPOSOID_COMMON_IMAGE_RECOGNITION_PORT"), "getFeatureVector", transversalState)
-    Json.parse(featureVectorJson).as[FeatureVector]
-  }
-  */
-
   "The data " should "be properly registered in GraphDB and VectorDB." in {
     val documentId = java.util.UUID.randomUUID().toString
     val knowledge1 = Knowledge(sentence = "これはテストの前提1です。", lang = "ja_JP", extentInfoJson = "{}")
