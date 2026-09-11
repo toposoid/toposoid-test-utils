@@ -574,7 +574,7 @@ object TestUtils {
             propositionId = x.knowledgeBaseSemiGlobalNode.propositionId,
             sentenceId = x.knowledgeBaseSemiGlobalNode.sentenceId,
             featureId = registeredContentResult.knowledgeForTable.id,
-            featureType = FeatureType.IMAGE.index,
+            featureType = FeatureType.TABLE.index,
             url = registeredContentResult.knowledgeForTable.tableReference.reference.url,
             source = registeredContentResult.knowledgeForTable.tableReference.reference.originalUrlOrReference,
             featureInputType = DataEntryType.MANUAL.index)                   
