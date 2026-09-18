@@ -482,7 +482,7 @@ object TestUtils {
     val uploadResult = Json.parse(responseJson).as[UploadResult]
     val imageReferenceOrg = knowledgeForImage.imageReference.reference
     val reference = Reference(url = uploadResult.url, surface = imageReferenceOrg.surface, surfaceIndex = imageReferenceOrg.surfaceIndex, isWholeSentence = imageReferenceOrg.isWholeSentence, originalUrlOrReference = knowledgeForImage.imageReference.reference.originalUrlOrReference, metaInformations = List.empty[String])
-    val imageReference = ImageReference(reference = reference, x = 0, y = 0, width = 640, height = 480)
+    val imageReference = ImageReference(reference = reference, x = knowledgeForImage.imageReference.x, y = knowledgeForImage.imageReference.y, width = knowledgeForImage.imageReference.width, height = knowledgeForImage.imageReference.height)
     KnowledgeForImage(id = uploadResult.id, imageReference = imageReference)
   }
 
