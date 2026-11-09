@@ -187,12 +187,10 @@ object TestUtils {
     val updatedAsos = asos.foldLeft(List.empty[AnalyzedSentenceObject]){
       (acc, x) => {
         val coveredPropositionEdges = verifyingEdges.filter(y => y.sentenceId.equals(x.knowledgeBaseSemiGlobalNode.sentenceId)).head.coveredPropositionEdges
-        val updatedDeductionReult = DeductionResult(
-          status = x.deductionResult.status, 
+        val updatedDeductionReult = DeductionResult(          
           authenticityType = x.deductionResult.authenticityType, 
           coveredPropositionEdges = coveredPropositionEdges, 
           evidenceKnowledgeList = x.deductionResult.evidenceKnowledgeList, 
-          havePremiseInGivenProposition = x.deductionResult.havePremiseInGivenProposition, 
           deductionPhaseType = x.deductionResult.deductionPhaseType
         )        
         acc :+ AnalyzedSentenceObject(x.nodeMap, x.edgeList, x.knowledgeBaseSemiGlobalNode, updatedDeductionReult)
@@ -216,11 +214,9 @@ object TestUtils {
       (acc, x) => {
         val coveredPropositionEdges = verifyingEdges.filter(y => y.sentenceId.equals(x.knowledgeBaseSemiGlobalNode.sentenceId)).head.coveredPropositionEdges
         val updatedDeductionReult = DeductionResult(
-          status = x.deductionResult.status, 
           authenticityType = x.deductionResult.authenticityType, 
           coveredPropositionEdges = coveredPropositionEdges, 
           evidenceKnowledgeList = x.deductionResult.evidenceKnowledgeList, 
-          havePremiseInGivenProposition = x.deductionResult.havePremiseInGivenProposition, 
           deductionPhaseType = x.deductionResult.deductionPhaseType
         )        
         acc :+ AnalyzedSentenceObject(x.nodeMap, x.edgeList, x.knowledgeBaseSemiGlobalNode, updatedDeductionReult)
